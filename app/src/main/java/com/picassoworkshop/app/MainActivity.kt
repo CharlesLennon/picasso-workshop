@@ -12,6 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.Troubleshoot
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -25,6 +26,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.picassoworkshop.app.dashboard.DashboardManager
+import com.picassoworkshop.app.dashboard.TelemetryRecorder
 import com.picassoworkshop.app.data.DataUpdateState
 import com.picassoworkshop.app.data.WorkshopDataManager
 import com.picassoworkshop.app.data.model.EngineType
@@ -33,6 +36,7 @@ import com.picassoworkshop.app.data.model.Transmission
 import com.picassoworkshop.app.data.model.VehicleSelection
 import com.picassoworkshop.app.obd.BluetoothConnectionManager
 import com.picassoworkshop.app.obd.ObdDiagnosticsCoordinator
+import com.picassoworkshop.app.ui.dashboard.DashboardsScreen
 import com.picassoworkshop.app.ui.dialogs.VehicleSelectorSheet
 import com.picassoworkshop.app.ui.home.ProceduresListScreen
 import com.picassoworkshop.app.ui.obd.ObdDiagnosticsScreen
@@ -48,6 +52,8 @@ class MainActivity : ComponentActivity() {
     private lateinit var updateManager: AppUpdateManager
     private lateinit var bluetoothConnectionManager: BluetoothConnectionManager
     private lateinit var obdCoordinator: ObdDiagnosticsCoordinator
+    private lateinit var dashboardManager: DashboardManager
+    private lateinit var telemetryRecorder: TelemetryRecorder
 
     private val prefs by lazy {
         getSharedPreferences("picasso_prefs", Context.MODE_PRIVATE)
@@ -60,6 +66,8 @@ class MainActivity : ComponentActivity() {
         updateManager = AppUpdateManager(applicationContext)
         bluetoothConnectionManager = BluetoothConnectionManager(applicationContext)
         obdCoordinator = ObdDiagnosticsCoordinator(bluetoothConnectionManager, dataManager)
+        dashboardManager = DashboardManager(applicationContext)
+        telemetryRecorder = TelemetryRecorder(applicationContext)
 
         // Load saved vehicle selection or default to Mk1 1.6 HDi
         val isFirstLaunch = !prefs.getBoolean("has_selected_vehicle", false)
@@ -75,6 +83,8 @@ class MainActivity : ComponentActivity() {
                         dataManager = dataManager,
                         updateManager = updateManager,
                         obdCoordinator = obdCoordinator,
+                        dashboardManager = dashboardManager,
+                        telemetryRecorder = telemetryRecorder,
                         initialSelection = initialSelection,
                         startWithSelectorOpen = isFirstLaunch,
                         onSaveVehicleSelection = { selection ->
@@ -127,6 +137,8 @@ fun WorkshopApp(
     dataManager: WorkshopDataManager,
     updateManager: AppUpdateManager,
     obdCoordinator: ObdDiagnosticsCoordinator,
+    dashboardManager: DashboardManager,
+    telemetryRecorder: TelemetryRecorder,
     initialSelection: VehicleSelection,
     startWithSelectorOpen: Boolean,
     onSaveVehicleSelection: (VehicleSelection) -> Unit
@@ -156,7 +168,7 @@ fun WorkshopApp(
     Scaffold(
         bottomBar = {
             // Persistent bottom navigation bar for top-level destinations
-            if (currentRoute == "home" || currentRoute == "obd") {
+            if (currentRoute == "home" || currentRoute == "dashboards" || currentRoute == "obd") {
                 NavigationBar(
                     containerColor = WorkshopSurfaceElevated,
                     contentColor = TextPrimary,
@@ -192,6 +204,35 @@ fun WorkshopApp(
                     )
 
                     NavigationBarItem(
+                        selected = currentRoute == "dashboards",
+                        onClick = {
+                            if (currentRoute != "dashboards") {
+                                navController.navigate("dashboards") {
+                                    launchSingleTop = true
+                                }
+                            }
+                        },
+                        icon = {
+                            Icon(Icons.Default.Speed, contentDescription = "Live Telemetry Dashboards")
+                        },
+                        label = {
+                            Text(
+                                text = "DASHBOARDS",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = FontFamily.Monospace
+                            )
+                        },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = CyanAccent,
+                            selectedTextColor = CyanAccent,
+                            indicatorColor = CyanAccent.copy(alpha = 0.15f),
+                            unselectedIconColor = TextSecondary,
+                            unselectedTextColor = TextSecondary
+                        )
+                    )
+
+                    NavigationBarItem(
                         selected = currentRoute == "obd",
                         onClick = {
                             if (currentRoute != "obd") {
@@ -201,7 +242,7 @@ fun WorkshopApp(
                             }
                         },
                         icon = {
-                            Icon(Icons.Default.Speed, contentDescription = "OBD Diagnostics")
+                            Icon(Icons.Default.Troubleshoot, contentDescription = "OBD Diagnostics")
                         },
                         label = {
                             Text(
@@ -212,9 +253,9 @@ fun WorkshopApp(
                             )
                         },
                         colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = CyanAccent,
-                            selectedTextColor = CyanAccent,
-                            indicatorColor = CyanAccent.copy(alpha = 0.15f),
+                            selectedIconColor = WarningOrange,
+                            selectedTextColor = WarningOrange,
+                            indicatorColor = WarningOrange.copy(alpha = 0.15f),
                             unselectedIconColor = TextSecondary,
                             unselectedTextColor = TextSecondary
                         )
@@ -298,8 +339,18 @@ fun WorkshopApp(
                             updateManager.dismissUpdate()
                         },
                         onOpenObdClick = {
-                            navController.navigate("obd")
+                            navController.navigate("dashboards")
                         }
+                    )
+                }
+
+                composable("dashboards") {
+                    DashboardsScreen(
+                        coordinator = obdCoordinator,
+                        dashboardManager = dashboardManager,
+                        telemetryRecorder = telemetryRecorder,
+                        onBackClick = { navController.popBackStack() },
+                        onOpenObdScan = { navController.navigate("obd") }
                     )
                 }
 

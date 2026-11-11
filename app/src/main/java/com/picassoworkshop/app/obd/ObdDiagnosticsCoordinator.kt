@@ -226,11 +226,24 @@ class ObdDiagnosticsCoordinator(
         if (telemetryJob?.isActive == true) return
 
         telemetryJob = scope.launch {
-            // Restore generic header for PIDs
+            // Restore generic broadcast header for PIDs
             connectionManager.sendCommand("ATSH 7DF")
+
+            var simCounter = 0
 
             while (isActive) {
                 try {
+                    simCounter++
+                    // In simulation mode, generate realistic slight dynamic fluctuations
+                    val simPhase = (simCounter % 20) / 20.0
+                    val simRpm = (820 + (Math.sin(simPhase * Math.PI * 2) * 250)).toInt()
+                    val simSpeed = (48 + (Math.sin(simPhase * Math.PI) * 12)).toInt()
+                    val simBoost = (0.25f + (Math.max(0.0, Math.sin(simPhase * Math.PI * 2)) * 0.85f)).toFloat()
+                    val simRail = (290 + (Math.max(0.0, Math.sin(simPhase * Math.PI * 2)) * 520)).toInt()
+                    val simLoad = (25 + (Math.sin(simPhase * Math.PI * 2) * 18)).toInt()
+                    val simThrottle = (18 + (Math.sin(simPhase * Math.PI * 2) * 12)).toInt()
+                    val simMaf = (12.4f + (Math.sin(simPhase * Math.PI * 2) * 15.0f)).toFloat()
+
                     // Battery Voltage
                     val vRaw = connectionManager.sendCommand("ATRV", timeoutMs = 600)
                     val volts = protocolEngine.parseBatteryVoltage(vRaw)
@@ -255,14 +268,44 @@ class ObdDiagnosticsCoordinator(
                     val rRaw = connectionManager.sendCommand("0123", timeoutMs = 600)
                     val rail = protocolEngine.parseRailPressure(rRaw)
 
+                    // Intake Air Temp
+                    val iatRaw = connectionManager.sendCommand("010F", timeoutMs = 600)
+                    val iat = protocolEngine.parseIntakeAirTemp(iatRaw)
+
+                    // Engine Load
+                    val loadRaw = connectionManager.sendCommand("0104", timeoutMs = 600)
+                    val load = protocolEngine.parseEngineLoad(loadRaw)
+
+                    // Throttle
+                    val throtRaw = connectionManager.sendCommand("0111", timeoutMs = 600)
+                    val throttle = protocolEngine.parseThrottlePos(throtRaw)
+
+                    // Fuel Level
+                    val fuelRaw = connectionManager.sendCommand("012F", timeoutMs = 600)
+                    val fuel = protocolEngine.parseFuelLevel(fuelRaw)
+
+                    // MAF
+                    val mafRaw = connectionManager.sendCommand("0110", timeoutMs = 600)
+                    val maf = protocolEngine.parseMafRate(mafRaw)
+
+                    // Oil Temp
+                    val oilRaw = connectionManager.sendCommand("015C", timeoutMs = 600)
+                    val oil = protocolEngine.parseOilTemp(oilRaw)
+
                     _liveTelemetry.value = LiveTelemetry(
-                        rpm = if (connectionManager.isSimulationMode && rpm == 0) 824 else rpm,
-                        speedKmh = speed,
+                        rpm = if (connectionManager.isSimulationMode && rpm == 0) simRpm else rpm,
+                        speedKmh = if (connectionManager.isSimulationMode && speed == 0) simSpeed else speed,
                         coolantTempC = if (connectionManager.isSimulationMode && coolant == 0) 88 else coolant,
                         batteryVoltage = if (connectionManager.isSimulationMode && volts == 0f) 14.2f else volts,
-                        boostPressureBar = if (connectionManager.isSimulationMode && boost == 0f) 0.22f else boost,
-                        railPressureBar = if (connectionManager.isSimulationMode && rail == 0) 295 else rail,
-                        isEngineRunning = (rpm > 400 || (connectionManager.isSimulationMode))
+                        boostPressureBar = if (connectionManager.isSimulationMode && boost == 0f) simBoost else boost,
+                        railPressureBar = if (connectionManager.isSimulationMode && rail == 0) simRail else rail,
+                        intakeAirTempC = if (connectionManager.isSimulationMode && iat == 0) 24 else iat,
+                        engineLoadPercent = if (connectionManager.isSimulationMode && load == 0f) simLoad else load.toInt(),
+                        throttlePercent = if (connectionManager.isSimulationMode && throttle == 0f) simThrottle else throttle.toInt(),
+                        fuelLevelPercent = if (connectionManager.isSimulationMode && fuel == 0f) 68 else fuel.toInt(),
+                        mafRateGps = if (connectionManager.isSimulationMode && maf == 0f) simMaf else maf,
+                        oilTempC = if (connectionManager.isSimulationMode && oil == 0) 91 else oil,
+                        isEngineRunning = (rpm > 400 || connectionManager.isSimulationMode)
                     )
 
                 } catch (e: Exception) {
@@ -272,6 +315,10 @@ class ObdDiagnosticsCoordinator(
                 delay(600) // Poll interval
             }
         }
+    }
+
+    suspend fun sendRawCommand(command: String): String {
+        return connectionManager.sendCommand(command)
     }
 
     fun stopLiveTelemetryPolling() {

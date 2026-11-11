@@ -44,9 +44,34 @@ data class LiveTelemetry(
     val batteryVoltage: Float = 0f,
     val boostPressureBar: Float = 0f,
     val railPressureBar: Int = 0,
+    val intakeAirTempC: Int = 0,
+    val engineLoadPercent: Int = 0,
+    val throttlePercent: Int = 0,
+    val fuelLevelPercent: Int = 0,
+    val mafRateGps: Float = 0f,
+    val oilTempC: Int = 0,
     val isEngineRunning: Boolean = false,
-    val lastUpdatedTimestamp: Long = System.currentTimeMillis()
-)
+    val lastUpdatedTimestamp: Long = System.currentTimeMillis(),
+    val customPidValues: Map<String, Double> = emptyMap()
+) {
+    fun getValueForPid(pidId: String): Double {
+        return when (pidId) {
+            "ENGINE_RPM" -> rpm.toDouble()
+            "SPEED_KMH" -> speedKmh.toDouble()
+            "COOLANT_TEMP" -> coolantTempC.toDouble()
+            "BATTERY_VOLTS" -> batteryVoltage.toDouble()
+            "BOOST_PRESSURE" -> boostPressureBar.toDouble()
+            "RAIL_PRESSURE" -> railPressureBar.toDouble()
+            "INTAKE_AIR_TEMP" -> intakeAirTempC.toDouble()
+            "ENGINE_LOAD" -> engineLoadPercent.toDouble()
+            "THROTTLE_POS" -> throttlePercent.toDouble()
+            "FUEL_LEVEL" -> fuelLevelPercent.toDouble()
+            "MAF_RATE" -> mafRateGps.toDouble()
+            "OIL_TEMP" -> oilTempC.toDouble()
+            else -> customPidValues[pidId] ?: 0.0
+        }
+    }
+}
 
 data class BluetoothDeviceInfo(
     val name: String,

@@ -98,6 +98,24 @@ class ElmProtocolEngineTest {
 
         // Fuel Rail Pressure (0B 80 hex = 2944 kPa -> 294 bar)
         assertEquals(294, engine.parseRailPressure("41 23 0B 80\r\r>"))
+
+        // Intake Air Temp (46 hex = 70 - 40 = 30 °C)
+        assertEquals(30, engine.parseIntakeAirTemp("41 0F 46\r\r>"))
+
+        // Engine Load (64 hex = 100 * 100 / 255 = 39.2 %)
+        assertEquals(39.2f, engine.parseEngineLoad("41 04 64\r\r>"), 0.1f)
+
+        // Throttle Position (32 hex = 50 * 100 / 255 = 19.6 %)
+        assertEquals(19.6f, engine.parseThrottlePos("41 11 32\r\r>"), 0.1f)
+
+        // Fuel Level (80 hex = 128 * 100 / 255 = 50.2 %)
+        assertEquals(50.2f, engine.parseFuelLevel("41 2F 80\r\r>"), 0.1f)
+
+        // MAF Rate (03 E8 hex = 1000 / 100 = 10.0 g/s)
+        assertEquals(10.0f, engine.parseMafRate("41 10 03 E8\r\r>"), 0.1f)
+
+        // Oil Temp (82 hex = 130 - 40 = 90 °C)
+        assertEquals(90, engine.parseOilTemp("41 5C 82\r\r>"))
     }
 
     @Test

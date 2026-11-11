@@ -263,4 +263,83 @@ class ElmProtocolEngine {
         }
         return 0
     }
+
+    /**
+     * Parses Intake Air Temperature from Mode 01 PID 0F (Formula: A - 40 °C).
+     */
+    fun parseIntakeAirTemp(raw: String): Int {
+        val cleaned = cleanResponse(raw)
+        val idx = cleaned.indexOf("410F").takeIf { it >= 0 } ?: cleaned.indexOf("410f")
+        if (idx >= 0 && cleaned.length >= idx + 6) {
+            val a = cleaned.substring(idx + 4, idx + 6).toIntOrNull(16) ?: return 0
+            return a - 40
+        }
+        return 0
+    }
+
+    /**
+     * Parses Calculated Engine Load from Mode 01 PID 04 (Formula: A * 100 / 255 %).
+     */
+    fun parseEngineLoad(raw: String): Float {
+        val cleaned = cleanResponse(raw)
+        val idx = cleaned.indexOf("4104")
+        if (idx >= 0 && cleaned.length >= idx + 6) {
+            val a = cleaned.substring(idx + 4, idx + 6).toIntOrNull(16) ?: return 0f
+            return (a * 100f) / 255f
+        }
+        return 0f
+    }
+
+    /**
+     * Parses Throttle / Accelerator Position from Mode 01 PID 11 (Formula: A * 100 / 255 %).
+     */
+    fun parseThrottlePos(raw: String): Float {
+        val cleaned = cleanResponse(raw)
+        val idx = cleaned.indexOf("4111")
+        if (idx >= 0 && cleaned.length >= idx + 6) {
+            val a = cleaned.substring(idx + 4, idx + 6).toIntOrNull(16) ?: return 0f
+            return (a * 100f) / 255f
+        }
+        return 0f
+    }
+
+    /**
+     * Parses Fuel Tank Level from Mode 01 PID 2F (Formula: A * 100 / 255 %).
+     */
+    fun parseFuelLevel(raw: String): Float {
+        val cleaned = cleanResponse(raw)
+        val idx = cleaned.indexOf("412F").takeIf { it >= 0 } ?: cleaned.indexOf("412f")
+        if (idx >= 0 && cleaned.length >= idx + 6) {
+            val a = cleaned.substring(idx + 4, idx + 6).toIntOrNull(16) ?: return 0f
+            return (a * 100f) / 255f
+        }
+        return 0f
+    }
+
+    /**
+     * Parses Mass Air Flow (MAF) Rate from Mode 01 PID 10 (Formula: ((A * 256) + B) / 100 g/s).
+     */
+    fun parseMafRate(raw: String): Float {
+        val cleaned = cleanResponse(raw)
+        val idx = cleaned.indexOf("4110")
+        if (idx >= 0 && cleaned.length >= idx + 8) {
+            val a = cleaned.substring(idx + 4, idx + 6).toIntOrNull(16) ?: return 0f
+            val b = cleaned.substring(idx + 6, idx + 8).toIntOrNull(16) ?: return 0f
+            return ((a * 256) + b) / 100f
+        }
+        return 0f
+    }
+
+    /**
+     * Parses Engine Oil Temperature from Mode 01 PID 5C (Formula: A - 40 °C).
+     */
+    fun parseOilTemp(raw: String): Int {
+        val cleaned = cleanResponse(raw)
+        val idx = cleaned.indexOf("415C").takeIf { it >= 0 } ?: cleaned.indexOf("415c")
+        if (idx >= 0 && cleaned.length >= idx + 6) {
+            val a = cleaned.substring(idx + 4, idx + 6).toIntOrNull(16) ?: return 0
+            return a - 40
+        }
+        return 0
+    }
 }
