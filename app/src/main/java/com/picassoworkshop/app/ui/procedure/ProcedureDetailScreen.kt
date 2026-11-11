@@ -1,38 +1,39 @@
 package com.picassoworkshop.app.ui.procedure
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.picassoworkshop.app.data.model.DifficultyLevel
 import com.picassoworkshop.app.data.model.DisassemblyStep
-import com.picassoworkshop.app.data.model.ExplodedPart
 import com.picassoworkshop.app.data.model.RepairProcedure
+import com.picassoworkshop.app.data.model.ToolRequirement
+import com.picassoworkshop.app.data.model.TorqueSpec
 import com.picassoworkshop.app.ui.theme.*
-import com.picassoworkshop.app.ui.views.BlownOutDiagramView
-import com.picassoworkshop.app.ui.views.Spatial3DModelView
-
-enum class VisualizationMode {
-    BLOWN_OUT_SCHEMATIC,
-    SPATIAL_3D_MODEL
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,10 +41,9 @@ fun ProcedureDetailScreen(
     procedure: RepairProcedure,
     onBackClick: () -> Unit
 ) {
-    var viewMode by remember { mutableStateOf(VisualizationMode.BLOWN_OUT_SCHEMATIC) }
-    var explodeProgress by remember { mutableFloatStateOf(0.5f) }
-    var selectedPartId by remember { mutableStateOf<String?>(procedure.explodedParts.firstOrNull()?.id) }
-    var selectedTab by remember { mutableIntStateOf(0) }
+    var completedSteps by remember { mutableStateOf(setOf<Int>()) }
+    var showSafetyNotes by remember { mutableStateOf(procedure.safetyNotes.isNotEmpty()) }
+    var showToolingSpecs by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -58,7 +58,7 @@ fun ProcedureDetailScreen(
                             maxLines = 1
                         )
                         Text(
-                            text = "${procedure.targetGeneration.title} • ${procedure.targetEngine.title}",
+                            text = "${procedure.targetGeneration.displayTitle} • ${procedure.targetEngine.displayTitle}",
                             color = CyanAccent,
                             fontSize = 11.sp,
                             fontFamily = FontFamily.Monospace,
@@ -68,7 +68,28 @@ fun ProcedureDetailScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = TextPrimary)
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = TextPrimary
+                        )
+                    }
+                },
+                actions = {
+                    Surface(
+                        color = BlueprintGrid.copy(alpha = 0.4f),
+                        shape = RoundedCornerShape(12.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, CyanAccent.copy(alpha = 0.5f)),
+                        modifier = Modifier.padding(end = 12.dp)
+                    ) {
+                        Text(
+                            text = "${completedSteps.size}/${procedure.steps.size} DONE",
+                            color = if (completedSteps.size == procedure.steps.size && procedure.steps.isNotEmpty()) MintGreen else CyanAccent,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = WorkshopSurface)
@@ -76,323 +97,113 @@ fun ProcedureDetailScreen(
         },
         containerColor = WorkshopBackground
     ) { paddingValues ->
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
+                .padding(paddingValues),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // 1. Interactive Visualization Area (Height ~300dp)
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(310.dp)
-                    .background(WorkshopBackground)
-            ) {
-                if (procedure.explodedParts.isNotEmpty()) {
-                    if (viewMode == VisualizationMode.BLOWN_OUT_SCHEMATIC) {
-                        BlownOutDiagramView(
-                            parts = procedure.explodedParts,
-                            explodeProgress = explodeProgress,
-                            selectedPartId = selectedPartId,
-                            onPartSelected = { part -> selectedPartId = part.id }
-                        )
-                    } else {
-                        Spatial3DModelView(
-                            parts = procedure.explodedParts,
-                            explodeProgress = explodeProgress,
-                            selectedPartId = selectedPartId,
-                            onPartSelected = { part -> selectedPartId = part.id }
-                        )
-                    }
-                } else {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(
-                            text = "Diagram coming in next data package update",
-                            color = TextSecondary,
-                            fontSize = 12.sp,
-                            fontFamily = FontFamily.Monospace
-                        )
-                    }
-                }
+            // 1. Procedure Overview Card
+            item {
+                ProcedureOverviewHeader(
+                    procedure = procedure,
+                    completedCount = completedSteps.size,
+                    totalCount = procedure.steps.size
+                )
+            }
 
-                // Floating Top Controls inside visualization viewport
+            // 2. Critical Safety Instructions Banner (Collapsible)
+            if (procedure.safetyNotes.isNotEmpty()) {
+                item {
+                    SafetyNotesBanner(
+                        safetyNotes = procedure.safetyNotes,
+                        isExpanded = showSafetyNotes,
+                        onToggle = { showSafetyNotes = !showSafetyNotes }
+                    )
+                }
+            }
+
+            // 3. Quick Tools & Fastener Torque Quick Reference (Collapsible)
+            if (procedure.toolsNeeded.isNotEmpty() || procedure.torqueSpecs.isNotEmpty()) {
+                item {
+                    ToolingAndTorqueSummaryCard(
+                        tools = procedure.toolsNeeded,
+                        torqueSpecs = procedure.torqueSpecs,
+                        isExpanded = showToolingSpecs,
+                        onToggle = { showToolingSpecs = !showToolingSpecs }
+                    )
+                }
+            }
+
+            // 4. Section Title: Step-by-Step Infographs
+            item {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(10.dp)
-                        .align(Alignment.TopCenter),
+                        .padding(top = 4.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Mode Switcher Pill
-                    Surface(
-                        color = WorkshopSurface.copy(alpha = 0.94f),
-                        shape = RoundedCornerShape(20.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, WorkshopBorder)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Row(modifier = Modifier.padding(3.dp)) {
-                            // Blown Out Button
-                            Surface(
-                                color = if (viewMode == VisualizationMode.BLOWN_OUT_SCHEMATIC) CitroenRed else Color.Transparent,
-                                shape = RoundedCornerShape(16.dp),
-                                modifier = Modifier.clickable { viewMode = VisualizationMode.BLOWN_OUT_SCHEMATIC }
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    Icon(imageVector = Icons.Default.AspectRatio, contentDescription = null, tint = Color.White, modifier = Modifier.size(13.dp))
-                                    Text(
-                                        text = "BLOWN-OUT",
-                                        color = Color.White,
-                                        fontSize = 10.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        fontFamily = FontFamily.Monospace
-                                    )
-                                }
-                            }
-
-                            // 3D Model Button
-                            Surface(
-                                color = if (viewMode == VisualizationMode.SPATIAL_3D_MODEL) CyanAccent else Color.Transparent,
-                                shape = RoundedCornerShape(16.dp),
-                                modifier = Modifier.clickable { viewMode = VisualizationMode.SPATIAL_3D_MODEL }
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    Icon(imageVector = Icons.Default.ViewInAr, contentDescription = null, tint = if (viewMode == VisualizationMode.SPATIAL_3D_MODEL) WorkshopBackground else TextSecondary, modifier = Modifier.size(13.dp))
-                                    Text(
-                                        text = "3D MODEL",
-                                        color = if (viewMode == VisualizationMode.SPATIAL_3D_MODEL) WorkshopBackground else TextSecondary,
-                                        fontSize = 10.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        fontFamily = FontFamily.Monospace
-                                    )
-                                }
-                            }
-                        }
+                        Surface(
+                            color = CitroenRed,
+                            shape = RoundedCornerShape(4.dp),
+                            modifier = Modifier.size(width = 4.dp, height = 16.dp)
+                        ) {}
+                        Text(
+                            text = "STEP-BY-STEP REPAIR INFOGRAPHS",
+                            color = TextPrimary,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace,
+                            letterSpacing = 1.sp
+                        )
                     }
 
-                    // Explode Progress Slider Pill
-                    Surface(
-                        color = WorkshopSurface.copy(alpha = 0.94f),
-                        shape = RoundedCornerShape(20.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, WorkshopBorder)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Text(
-                                text = "EXPLODE:",
-                                color = TextMuted,
-                                fontSize = 9.sp,
-                                fontWeight = FontWeight.Bold,
-                                fontFamily = FontFamily.Monospace
-                            )
-                            Slider(
-                                value = explodeProgress,
-                                onValueChange = { explodeProgress = it },
-                                valueRange = 0f..1f,
-                                colors = SliderDefaults.colors(
-                                    thumbColor = CyanAccent,
-                                    activeTrackColor = CyanAccent,
-                                    inactiveTrackColor = WorkshopBorder
-                                ),
-                                modifier = Modifier.width(90.dp)
-                            )
-                            Text(
-                                text = "${(explodeProgress * 100).toInt()}%",
-                                color = CyanAccent,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                fontFamily = FontFamily.Monospace
-                            )
-                        }
+                    if (completedSteps.isNotEmpty()) {
+                        Text(
+                            text = "Reset All",
+                            color = TextSecondary,
+                            fontSize = 11.sp,
+                            fontFamily = FontFamily.Monospace,
+                            modifier = Modifier.clickable { completedSteps = emptySet() }
+                        )
                     }
                 }
             }
 
-            // 2. Navigation Tabs (Steps / Parts & Fasteners / Torque & Tools)
-            TabRow(
-                selectedTabIndex = selectedTab,
-                containerColor = WorkshopSurface,
-                contentColor = CyanAccent,
-                indicator = { tabPositions ->
-                    TabRowDefaults.SecondaryIndicator(
-                        modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
-                        color = CitroenRed,
-                        height = 2.5.dp
-                    )
+            // 5. Individual Step-by-Step Infograph Cards
+            itemsIndexed(procedure.steps, key = { _, step -> step.stepNumber }) { index, step ->
+                val isCompleted = completedSteps.contains(step.stepNumber)
+                val relevantTorque = procedure.torqueSpecs.firstOrNull { spec ->
+                    step.instructions.contains(spec.componentName, ignoreCase = true) ||
+                            (step.tool != null && spec.fastenerSize.contains(step.tool.size, ignoreCase = true))
                 }
-            ) {
-                Tab(
-                    selected = selectedTab == 0,
-                    onClick = { selectedTab = 0 },
-                    text = {
-                        Text(
-                            text = "STEPS (${procedure.steps.size})",
-                            fontSize = 11.5.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = FontFamily.Monospace
-                        )
-                    }
-                )
-                Tab(
-                    selected = selectedTab == 1,
-                    onClick = { selectedTab = 1 },
-                    text = {
-                        Text(
-                            text = "PARTS & CALLOUTS",
-                            fontSize = 11.5.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = FontFamily.Monospace
-                        )
-                    }
-                )
-                Tab(
-                    selected = selectedTab == 2,
-                    onClick = { selectedTab = 2 },
-                    text = {
-                        Text(
-                            text = "TORQUE & TOOLS",
-                            fontSize = 11.5.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = FontFamily.Monospace
-                        )
+
+                StepInfographCard(
+                    step = step,
+                    stepIndex = index + 1,
+                    totalSteps = procedure.steps.size,
+                    isCompleted = isCompleted,
+                    matchedTorqueSpec = relevantTorque,
+                    onToggleComplete = {
+                        completedSteps = if (isCompleted) {
+                            completedSteps - step.stepNumber
+                        } else {
+                            completedSteps + step.stepNumber
+                        }
                     }
                 )
             }
 
-            // 3. Tab Contents
-            when (selectedTab) {
-                0 -> {
-                    // Steps List
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 14.dp, vertical = 10.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        items(procedure.steps) { step ->
-                            StepCard(
-                                step = step,
-                                isHighlighted = step.calloutNumber != null &&
-                                        procedure.explodedParts.find { it.id == selectedPartId }?.calloutNumber == step.calloutNumber,
-                                onCalloutClick = { callout ->
-                                    val matchedPart = procedure.explodedParts.find { it.calloutNumber == callout }
-                                    if (matchedPart != null) selectedPartId = matchedPart.id
-                                }
-                            )
-                        }
-                    }
-                }
-                1 -> {
-                    // Parts & Callouts Table
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 14.dp, vertical = 10.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(procedure.explodedParts) { part ->
-                            PartCard(
-                                part = part,
-                                isSelected = part.id == selectedPartId,
-                                onClick = { selectedPartId = part.id }
-                            )
-                        }
-                    }
-                }
-                2 -> {
-                    // Torque Specs & Tools Summary
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 14.dp, vertical = 10.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        item {
-                            Text(
-                                text = "CRITICAL FASTENER TORQUE SPECIFICATIONS",
-                                color = GoldenBolt,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                fontFamily = FontFamily.Monospace,
-                                letterSpacing = 1.sp
-                            )
-                        }
-                        items(procedure.torqueSpecs) { torque ->
-                            Surface(
-                                color = WorkshopSurface,
-                                shape = RoundedCornerShape(10.dp),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, WorkshopBorder),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(12.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(text = torque.componentName, color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                                        Text(text = "Fastener: ${torque.fastenerSize} • ${torque.notes}", color = TextSecondary, fontSize = 11.sp)
-                                    }
-                                    Surface(
-                                        color = GoldenBolt.copy(alpha = 0.15f),
-                                        shape = RoundedCornerShape(6.dp),
-                                        border = androidx.compose.foundation.BorderStroke(1.dp, GoldenBolt)
-                                    ) {
-                                        Text(
-                                            text = "${torque.torqueNm} Nm",
-                                            color = GoldenBolt,
-                                            fontSize = 13.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            fontFamily = FontFamily.Monospace,
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                        )
-                                    }
-                                }
-                            }
-                        }
-
-                        item {
-                            Spacer(modifier = Modifier.height(10.dp))
-                            Text(
-                                text = "WORKSHOP TOOLING REQUIRED",
-                                color = CyanAccent,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                fontFamily = FontFamily.Monospace,
-                                letterSpacing = 1.sp
-                            )
-                        }
-                        items(procedure.toolsNeeded) { tool ->
-                            Surface(
-                                color = WorkshopSurface,
-                                shape = RoundedCornerShape(10.dp),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, WorkshopBorder),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(12.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                                ) {
-                                    Icon(imageVector = Icons.Default.Build, contentDescription = null, tint = CyanAccent, modifier = Modifier.size(20.dp))
-                                    Column {
-                                        Text(text = tool.name, color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                                        Text(text = "Specification / Size: ${tool.size}", color = TextSecondary, fontSize = 11.sp, fontFamily = FontFamily.Monospace)
-                                    }
-                                }
-                            }
-                        }
-                    }
+            // 6. Final Completion Card
+            if (procedure.steps.isNotEmpty() && completedSteps.size == procedure.steps.size) {
+                item {
+                    ProcedureCompletedCard(onReset = { completedSteps = emptySet() })
                 }
             }
         }
@@ -400,22 +211,76 @@ fun ProcedureDetailScreen(
 }
 
 @Composable
-private fun StepCard(
-    step: DisassemblyStep,
-    isHighlighted: Boolean,
-    onCalloutClick: (Int) -> Unit
+private fun ProcedureOverviewHeader(
+    procedure: RepairProcedure,
+    completedCount: Int,
+    totalCount: Int
 ) {
     Surface(
-        color = if (isHighlighted) CyanAccent.copy(alpha = 0.12f) else WorkshopSurface,
-        shape = RoundedCornerShape(12.dp),
-        border = androidx.compose.foundation.BorderStroke(
-            width = if (isHighlighted) 1.5.dp else 1.dp,
-            color = if (isHighlighted) CyanAccent else WorkshopBorder
-        ),
+        color = WorkshopSurface,
+        shape = RoundedCornerShape(14.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, WorkshopBorder),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Column(modifier = Modifier.padding(14.dp)) {
-            // Header Row: Step number, Title, Callout Chip
+        Column(modifier = Modifier.padding(16.dp)) {
+            // Badges row: Category, Difficulty, Estimated Time
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Surface(
+                    color = BlueprintGrid.copy(alpha = 0.5f),
+                    shape = RoundedCornerShape(6.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, CyanAccent.copy(alpha = 0.6f))
+                ) {
+                    Text(
+                        text = procedure.category.title.uppercase(),
+                        color = CyanAccent,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                    )
+                }
+
+                val diffColor = when (procedure.difficulty) {
+                    DifficultyLevel.BEGINNER -> MintGreen
+                    DifficultyLevel.INTERMEDIATE -> GoldenBolt
+                    DifficultyLevel.ADVANCED -> WarningOrange
+                    DifficultyLevel.EXPERT -> CitroenRed
+                }
+
+                Surface(
+                    color = diffColor.copy(alpha = 0.15f),
+                    shape = RoundedCornerShape(6.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, diffColor)
+                ) {
+                    Text(
+                        text = "${procedure.difficulty.label.uppercase()} ${"★".repeat(procedure.difficulty.stars)}",
+                        color = diffColor,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Text(
+                text = procedure.summary,
+                color = TextSecondary,
+                fontSize = 13.sp,
+                lineHeight = 19.sp
+            )
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Progress Bar and Quick Stats
+            val progress = if (totalCount > 0) completedCount.toFloat() / totalCount else 0f
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -423,113 +288,116 @@ private fun StepCard(
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.weight(1f)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Surface(
-                        color = CitroenRed,
-                        shape = CircleShape,
-                        modifier = Modifier.size(26.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Text(
-                                text = "${step.stepNumber}",
-                                color = Color.White,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                fontFamily = FontFamily.Monospace
-                            )
-                        }
-                    }
+                    Icon(
+                        imageVector = Icons.Default.Schedule,
+                        contentDescription = null,
+                        tint = TextSecondary,
+                        modifier = Modifier.size(15.dp)
+                    )
                     Text(
-                        text = step.title,
-                        color = TextPrimary,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold
+                        text = "${procedure.estimatedMinutes} minutes estimated",
+                        color = TextSecondary,
+                        fontSize = 11.5.sp,
+                        fontFamily = FontFamily.Monospace
                     )
                 }
 
-                step.calloutNumber?.let { callout ->
-                    Surface(
-                        color = GoldenBolt.copy(alpha = 0.18f),
-                        shape = RoundedCornerShape(14.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, GoldenBolt),
-                        modifier = Modifier.clickable { onCalloutClick(callout) }
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Text(text = "PIN #$callout", color = GoldenBolt, fontSize = 10.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
-                            Icon(imageVector = Icons.Default.Visibility, contentDescription = null, tint = GoldenBolt, modifier = Modifier.size(12.dp))
-                        }
-                    }
-                }
+                Text(
+                    text = "${(progress * 100).toInt()}% completed",
+                    color = if (progress == 1f) MintGreen else CyanAccent,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Monospace
+                )
             }
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Instructions Text
-            Text(
-                text = step.instructions,
-                color = TextSecondary,
-                fontSize = 12.5.sp,
-                lineHeight = 18.sp
+            LinearProgressIndicator(
+                progress = { progress },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(6.dp)
+                    .clip(RoundedCornerShape(3.dp)),
+                color = if (progress == 1f) MintGreen else CitroenRed,
+                trackColor = WorkshopBorder
             )
+        }
+    }
+}
 
-            // Warning or Caution Banners
-            step.warning?.let { warn ->
-                Spacer(modifier = Modifier.height(8.dp))
-                Surface(
-                    color = CoralAlert.copy(alpha = 0.12f),
-                    shape = RoundedCornerShape(8.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, CoralAlert)
+@Composable
+private fun SafetyNotesBanner(
+    safetyNotes: List<String>,
+    isExpanded: Boolean,
+    onToggle: () -> Unit
+) {
+    Surface(
+        color = CoralAlert.copy(alpha = 0.08f),
+        shape = RoundedCornerShape(12.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, CoralAlert.copy(alpha = 0.6f)),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onToggle() },
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.padding(8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Icon(imageVector = Icons.Default.Warning, contentDescription = null, tint = CoralAlert, modifier = Modifier.size(16.dp))
-                        Text(text = warn, color = CoralAlert, fontSize = 11.sp, fontWeight = FontWeight.Medium)
-                    }
+                    Icon(
+                        imageVector = Icons.Default.Warning,
+                        contentDescription = null,
+                        tint = CoralAlert,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Text(
+                        text = "MANDATORY WORKSHOP SAFETY RULES (${safetyNotes.size})",
+                        color = CoralAlert,
+                        fontSize = 11.5.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace,
+                        letterSpacing = 0.5.sp
+                    )
                 }
+
+                Icon(
+                    imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                    contentDescription = null,
+                    tint = CoralAlert,
+                    modifier = Modifier.size(18.dp)
+                )
             }
 
-            step.caution?.let { caut ->
-                Spacer(modifier = Modifier.height(8.dp))
-                Surface(
-                    color = AmberWarning.copy(alpha = 0.12f),
-                    shape = RoundedCornerShape(8.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, AmberWarning)
-                ) {
+            if (isExpanded) {
+                Spacer(modifier = Modifier.height(10.dp))
+                safetyNotes.forEach { note ->
                     Row(
-                        modifier = Modifier.padding(8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 3.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.Top
                     ) {
-                        Icon(imageVector = Icons.Default.Info, contentDescription = null, tint = AmberWarning, modifier = Modifier.size(16.dp))
-                        Text(text = caut, color = AmberWarning, fontSize = 11.sp)
-                    }
-                }
-            }
-
-            // Tool Requirement Chip
-            step.tool?.let { t ->
-                Spacer(modifier = Modifier.height(8.dp))
-                Surface(
-                    color = WorkshopSurfaceElevated,
-                    shape = RoundedCornerShape(6.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, WorkshopBorder)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Icon(imageVector = Icons.Default.Build, contentDescription = null, tint = CyanAccent, modifier = Modifier.size(12.dp))
-                        Text(text = "${t.name} (${t.size})", color = TextPrimary, fontSize = 10.5.sp, fontFamily = FontFamily.Monospace)
+                        Text(
+                            text = "⚠",
+                            color = CoralAlert,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = note,
+                            color = TextPrimary,
+                            fontSize = 12.sp,
+                            lineHeight = 17.sp
+                        )
                     }
                 }
             }
@@ -538,68 +406,780 @@ private fun StepCard(
 }
 
 @Composable
-private fun PartCard(
-    part: ExplodedPart,
-    isSelected: Boolean,
-    onClick: () -> Unit
+private fun ToolingAndTorqueSummaryCard(
+    tools: List<ToolRequirement>,
+    torqueSpecs: List<TorqueSpec>,
+    isExpanded: Boolean,
+    onToggle: () -> Unit
 ) {
     Surface(
-        color = if (isSelected) CyanAccent.copy(alpha = 0.15f) else WorkshopSurface,
-        shape = RoundedCornerShape(10.dp),
-        border = androidx.compose.foundation.BorderStroke(
-            width = if (isSelected) 1.5.dp else 1.dp,
-            color = if (isSelected) CyanAccent else WorkshopBorder
-        ),
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() }
+        color = WorkshopSurface,
+        shape = RoundedCornerShape(12.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, WorkshopBorder),
+        modifier = Modifier.fillMaxWidth()
     ) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
+        Column(modifier = Modifier.padding(14.dp)) {
             Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                modifier = Modifier.weight(1f)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onToggle() },
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Surface(
-                    color = GoldenBolt,
-                    shape = CircleShape,
-                    modifier = Modifier.size(24.dp)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Default.Build,
+                        contentDescription = null,
+                        tint = CyanAccent,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Text(
+                        text = "REQUIRED TOOLS & TORQUE SPECS",
+                        color = CyanAccent,
+                        fontSize = 11.5.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace,
+                        letterSpacing = 0.5.sp
+                    )
+                }
+
+                Icon(
+                    imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                    contentDescription = null,
+                    tint = TextSecondary,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+
+            if (isExpanded) {
+                if (torqueSpecs.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = "CRITICAL FASTENER TORQUES",
+                        color = GoldenBolt,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    torqueSpecs.forEach { spec ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = spec.componentName,
+                                    color = TextPrimary,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Text(
+                                    text = "Fastener: ${spec.fastenerSize} ${if (spec.notes.isNotEmpty()) "• ${spec.notes}" else ""}",
+                                    color = TextSecondary,
+                                    fontSize = 10.5.sp
+                                )
+                            }
+                            Surface(
+                                color = GoldenBolt.copy(alpha = 0.15f),
+                                shape = RoundedCornerShape(4.dp),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, GoldenBolt)
+                            ) {
+                                Text(
+                                    text = "${spec.torqueNm} Nm",
+                                    color = GoldenBolt,
+                                    fontSize = 11.5.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = FontFamily.Monospace,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                if (tools.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = "TOOLBOX CHECKLIST",
+                        color = CyanAccent,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    tools.forEach { tool ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 3.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
+                                tint = CyanAccent,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Text(
+                                text = "${tool.name} — ${tool.size}",
+                                color = TextPrimary,
+                                fontSize = 11.5.sp,
+                                fontFamily = FontFamily.Monospace
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun StepInfographCard(
+    step: DisassemblyStep,
+    stepIndex: Int,
+    totalSteps: Int,
+    isCompleted: Boolean,
+    matchedTorqueSpec: TorqueSpec?,
+    onToggleComplete: () -> Unit
+) {
+    Surface(
+        color = if (isCompleted) WorkshopSurface.copy(alpha = 0.65f) else WorkshopSurface,
+        shape = RoundedCornerShape(14.dp),
+        border = androidx.compose.foundation.BorderStroke(
+            width = if (isCompleted) 1.dp else 1.5.dp,
+            color = if (isCompleted) MintGreen.copy(alpha = 0.5f) else WorkshopBorder
+        ),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            // Step Card Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    // Step Number or Completed Checkbox
+                    Surface(
+                        color = if (isCompleted) MintGreen else CitroenRed,
+                        shape = CircleShape,
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clickable { onToggleComplete() }
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            if (isCompleted) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = "Completed",
+                                    tint = WorkshopBackground,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            } else {
+                                Text(
+                                    text = "$stepIndex",
+                                    color = Color.White,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = FontFamily.Monospace
+                                )
+                            }
+                        }
+                    }
+
+                    Column {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Text(
+                                text = "STEP $stepIndex OF $totalSteps",
+                                color = if (isCompleted) MintGreen else CyanAccent,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = FontFamily.Monospace,
+                                letterSpacing = 0.5.sp
+                            )
+                            if (isCompleted) {
+                                Surface(
+                                    color = MintGreen.copy(alpha = 0.15f),
+                                    shape = RoundedCornerShape(4.dp)
+                                ) {
+                                    Text(
+                                        text = "DONE",
+                                        color = MintGreen,
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        fontFamily = FontFamily.Monospace,
+                                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                    )
+                                }
+                            }
+                        }
                         Text(
-                            text = "${part.calloutNumber}",
-                            color = WorkshopBackground,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = FontFamily.Monospace
+                            text = step.title,
+                            color = if (isCompleted) TextSecondary else TextPrimary,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold
                         )
                     }
                 }
-                Column {
-                    Text(text = part.name, color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                    Text(text = "OEM: ${part.oemPartNumber} • Tool: ${part.fastenerType}", color = TextSecondary, fontSize = 11.sp, fontFamily = FontFamily.Monospace)
+
+                // Interactive Toggle Checkbox Icon
+                IconButton(
+                    onClick = onToggleComplete,
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Icon(
+                        imageVector = if (isCompleted) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
+                        contentDescription = "Toggle Complete",
+                        tint = if (isCompleted) MintGreen else TextSecondary,
+                        modifier = Modifier.size(24.dp)
+                    )
                 }
             }
 
-            if (part.torqueNm != null) {
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Dedicated Technical Infograph Canvas for this Step
+            StepTechnicalInfograph(
+                step = step,
+                stepNumber = stepIndex
+            )
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Detailed Written Workshop Instructions
+            Text(
+                text = step.instructions,
+                color = if (isCompleted) TextSecondary else TextPrimary,
+                fontSize = 13.5.sp,
+                lineHeight = 20.sp
+            )
+
+            // Warning Banner
+            step.warning?.let { warn ->
+                Spacer(modifier = Modifier.height(10.dp))
                 Surface(
-                    color = GoldenBolt.copy(alpha = 0.15f),
-                    shape = RoundedCornerShape(6.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, GoldenBolt)
+                    color = CoralAlert.copy(alpha = 0.12f),
+                    shape = RoundedCornerShape(8.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, CoralAlert)
                 ) {
-                    Text(
-                        text = "${part.torqueNm} Nm",
-                        color = GoldenBolt,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        fontFamily = FontFamily.Monospace,
-                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                    Row(
+                        modifier = Modifier.padding(10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Warning,
+                            contentDescription = null,
+                            tint = CoralAlert,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Text(
+                            text = warn,
+                            color = CoralAlert,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            lineHeight = 17.sp
+                        )
+                    }
+                }
+            }
+
+            // Caution Banner
+            step.caution?.let { caut ->
+                Spacer(modifier = Modifier.height(10.dp))
+                Surface(
+                    color = AmberWarning.copy(alpha = 0.12f),
+                    shape = RoundedCornerShape(8.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, AmberWarning)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Info,
+                            contentDescription = null,
+                            tint = AmberWarning,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Text(
+                            text = caut,
+                            color = AmberWarning,
+                            fontSize = 12.sp,
+                            lineHeight = 17.sp
+                        )
+                    }
+                }
+            }
+
+            // Tool & Fastener Torque Footer
+            if (step.tool != null || matchedTorqueSpec != null) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (step.tool != null) {
+                        Surface(
+                            color = WorkshopSurfaceElevated,
+                            shape = RoundedCornerShape(6.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, WorkshopBorder)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Build,
+                                    contentDescription = null,
+                                    tint = CyanAccent,
+                                    modifier = Modifier.size(13.dp)
+                                )
+                                Text(
+                                    text = "${step.tool.name} (${step.tool.size})",
+                                    color = TextPrimary,
+                                    fontSize = 11.sp,
+                                    fontFamily = FontFamily.Monospace
+                                )
+                            }
+                        }
+                    }
+
+                    if (matchedTorqueSpec != null) {
+                        Surface(
+                            color = GoldenBolt.copy(alpha = 0.15f),
+                            shape = RoundedCornerShape(6.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, GoldenBolt)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.CheckCircle,
+                                    contentDescription = null,
+                                    tint = GoldenBolt,
+                                    modifier = Modifier.size(13.dp)
+                                )
+                                Text(
+                                    text = "TORQUE: ${matchedTorqueSpec.torqueNm} Nm",
+                                    color = GoldenBolt,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = FontFamily.Monospace
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Technical Infograph Canvas dedicated to the action of each step.
+ * Renders technical vector diagrams tailored to DV6/Picasso operations:
+ * - Battery / BSI sleep countdown & terminal isolation
+ * - Serpentine belt path & tensioner rotation with locking pin
+ * - Wiring harness & connector extraction
+ * - Fastener loosening / torque sequences
+ * - Extraction vector past wheel arch / subframe
+ */
+@Composable
+private fun StepTechnicalInfograph(
+    step: DisassemblyStep,
+    stepNumber: Int
+) {
+    Surface(
+        color = WorkshopBackground,
+        shape = RoundedCornerShape(10.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, BlueprintGrid),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(130.dp)
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val canvasWidth = size.width
+            val canvasHeight = size.height
+
+            // Blueprint Grid Background Pattern
+            val gridSpacing = 24.dp.toPx()
+            var x = 0f
+            while (x < canvasWidth) {
+                drawLine(
+                    color = BlueprintGrid.copy(alpha = 0.35f),
+                    start = Offset(x, 0f),
+                    end = Offset(x, canvasHeight),
+                    strokeWidth = 1f
+                )
+                x += gridSpacing
+            }
+            var y = 0f
+            while (y < canvasHeight) {
+                drawLine(
+                    color = BlueprintGrid.copy(alpha = 0.35f),
+                    start = Offset(0f, y),
+                    end = Offset(canvasWidth, y),
+                    strokeWidth = 1f
+                )
+                y += gridSpacing
+            }
+
+            // Draw Step Specific Technical Schematics based on graphicKey or step number
+            val effectiveStepId = when {
+                step.graphicKey.isNotEmpty() -> step.graphicKey
+                else -> "step_$stepNumber"
+            }
+
+            when (if (effectiveStepId.startsWith("step_")) stepNumber else stepNumber) {
+                1 -> {
+                    // STEP 1: Battery Disconnect & BSI 3-Minute Sleep
+                    // Battery Body
+                    drawRoundRect(
+                        color = Color(0xFF1E293B),
+                        topLeft = Offset(40f, 30f),
+                        size = Size(110f, 70f),
+                        cornerRadius = CornerRadius(6f, 6f)
+                    )
+                    drawRoundRect(
+                        color = CyanAccent,
+                        topLeft = Offset(40f, 30f),
+                        size = Size(110f, 70f),
+                        cornerRadius = CornerRadius(6f, 6f),
+                        style = Stroke(width = 2f)
+                    )
+                    // Terminals (+ and -)
+                    drawRect(color = CitroenRed, topLeft = Offset(52f, 20f), size = Size(16f, 10f))
+                    drawRect(color = Color(0xFF94A3B8), topLeft = Offset(118f, 20f), size = Size(16f, 10f))
+
+                    // Negative Terminal Disconnect Arrow (Up and away)
+                    val arrowPath = Path().apply {
+                        moveTo(126f, 15f)
+                        lineTo(126f, -5f)
+                        lineTo(150f, -5f)
+                    }
+                    drawPath(
+                        path = arrowPath,
+                        color = CoralAlert,
+                        style = Stroke(
+                            width = 3f,
+                            pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 4f))
+                        )
+                    )
+                    // Arrowhead
+                    drawCircle(color = CoralAlert, radius = 4f, center = Offset(150f, -5f))
+
+                    // BSI 3-Minute Clock Timer Diagram
+                    val clockCenter = Offset(canvasWidth - 90f, canvasHeight / 2)
+                    drawCircle(
+                        color = Color(0xFF0F172A),
+                        radius = 36f,
+                        center = clockCenter
+                    )
+                    drawCircle(
+                        color = MintGreen,
+                        radius = 36f,
+                        center = clockCenter,
+                        style = Stroke(width = 2.5f)
+                    )
+                    // Hands at 3 minutes
+                    drawLine(
+                        color = Color.White,
+                        start = clockCenter,
+                        end = Offset(clockCenter.x, clockCenter.y - 24f),
+                        strokeWidth = 2.5f
+                    )
+                    drawLine(
+                        color = MintGreen,
+                        start = clockCenter,
+                        end = Offset(clockCenter.x + 18f, clockCenter.y),
+                        strokeWidth = 2.5f
                     )
                 }
+
+                2 -> {
+                    // STEP 2: Auxiliary Drive Serpentine Belt & Tensioner
+                    val crankCenter = Offset(60f, canvasHeight / 2 + 15f)
+                    val altCenter = Offset(canvasWidth / 2 - 20f, 38f)
+                    val tensionerCenter = Offset(canvasWidth / 2 + 20f, canvasHeight / 2 + 20f)
+                    val acCenter = Offset(canvasWidth - 70f, canvasHeight / 2)
+
+                    // Pulleys
+                    drawCircle(color = Color(0xFF334155), radius = 26f, center = crankCenter)
+                    drawCircle(color = CyanAccent, radius = 26f, center = crankCenter, style = Stroke(2f))
+
+                    drawCircle(color = GoldenBolt, radius = 20f, center = altCenter)
+                    drawCircle(color = Color.White, radius = 20f, center = altCenter, style = Stroke(2f))
+
+                    drawCircle(color = CitroenRed, radius = 16f, center = tensionerCenter)
+                    drawCircle(color = Color.White, radius = 16f, center = tensionerCenter, style = Stroke(2f))
+
+                    drawCircle(color = Color(0xFF334155), radius = 22f, center = acCenter)
+                    drawCircle(color = CyanAccent, radius = 22f, center = acCenter, style = Stroke(2f))
+
+                    // Serpentine Belt Path
+                    val beltPath = Path().apply {
+                        moveTo(crankCenter.x, crankCenter.y - 26f)
+                        lineTo(altCenter.x - 20f, altCenter.y)
+                        lineTo(altCenter.x + 20f, altCenter.y)
+                        lineTo(tensionerCenter.x - 16f, tensionerCenter.y)
+                        lineTo(acCenter.x, acCenter.y + 22f)
+                        lineTo(crankCenter.x, crankCenter.y + 26f)
+                        close()
+                    }
+                    drawPath(
+                        path = beltPath,
+                        color = WarningOrange,
+                        style = Stroke(width = 3.5f)
+                    )
+
+                    // Tensioner rotation vector & 4mm pin hole
+                    drawCircle(color = Color.White, radius = 4f, center = tensionerCenter)
+                    val rotArrow = Path().apply {
+                        moveTo(tensionerCenter.x + 22f, tensionerCenter.y - 12f)
+                        lineTo(tensionerCenter.x + 26f, tensionerCenter.y + 12f)
+                    }
+                    drawPath(path = rotArrow, color = CoralAlert, style = Stroke(width = 2.5f))
+                }
+
+                3 -> {
+                    // STEP 3: Electrical Connections (B+ 13mm Nut & 2-Pin Excitation Plug)
+                    // Alternator Rear Housing Outline
+                    drawRoundRect(
+                        color = Color(0xFF1E293B),
+                        topLeft = Offset(50f, 25f),
+                        size = Size(canvasWidth - 100f, 80f),
+                        cornerRadius = CornerRadius(10f, 10f)
+                    )
+                    drawRoundRect(
+                        color = CyanAccent,
+                        topLeft = Offset(50f, 25f),
+                        size = Size(canvasWidth - 100f, 80f),
+                        cornerRadius = CornerRadius(10f, 10f),
+                        style = Stroke(width = 2f)
+                    )
+
+                    // B+ Stud (Copper Hex Nut)
+                    val bPlusCenter = Offset(110f, 65f)
+                    drawCircle(color = GoldenBolt, radius = 14f, center = bPlusCenter)
+                    drawCircle(color = Color.Black, radius = 6f, center = bPlusCenter)
+                    // Loosening Direction Arrow (counter-clockwise)
+                    drawCircle(
+                        color = CoralAlert,
+                        radius = 20f,
+                        center = bPlusCenter,
+                        style = Stroke(
+                            width = 2f,
+                            pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 4f))
+                        )
+                    )
+
+                    // 2-Pin Signal Connector (Excitation plug)
+                    val plugRect = Offset(canvasWidth - 140f, 48f)
+                    drawRoundRect(
+                        color = MintGreen,
+                        topLeft = plugRect,
+                        size = Size(45f, 34f),
+                        cornerRadius = CornerRadius(4f, 4f)
+                    )
+                    // Unclip arrow
+                    val unclipPath = Path().apply {
+                        moveTo(plugRect.x + 22f, plugRect.y - 4f)
+                        lineTo(plugRect.x + 22f, plugRect.y - 18f)
+                    }
+                    drawPath(path = unclipPath, color = Color.White, style = Stroke(width = 2.5f))
+                }
+
+                4 -> {
+                    // STEP 4: Upper Mounting Bolts (Dual 13mm Hex)
+                    // Engine Bracket Lugs
+                    drawRoundRect(
+                        color = Color(0xFF1E293B),
+                        topLeft = Offset(60f, 30f),
+                        size = Size(canvasWidth - 120f, 70f),
+                        cornerRadius = CornerRadius(8f, 8f)
+                    )
+                    drawRoundRect(
+                        color = BlueprintGrid,
+                        topLeft = Offset(60f, 30f),
+                        size = Size(canvasWidth - 120f, 70f),
+                        cornerRadius = CornerRadius(8f, 8f),
+                        style = Stroke(2f)
+                    )
+
+                    // Upper Bolt 1
+                    val bolt1Center = Offset(120f, 65f)
+                    drawCircle(color = GoldenBolt, radius = 12f, center = bolt1Center)
+                    drawCircle(color = Color.Black, radius = 5f, center = bolt1Center)
+
+                    // Upper Bolt 2
+                    val bolt2Center = Offset(canvasWidth - 120f, 65f)
+                    drawCircle(color = GoldenBolt, radius = 12f, center = bolt2Center)
+                    drawCircle(color = Color.Black, radius = 5f, center = bolt2Center)
+
+                    // Unthreading arrows
+                    drawLine(
+                        color = CyanAccent,
+                        start = bolt1Center,
+                        end = Offset(bolt1Center.x, bolt1Center.y - 35f),
+                        strokeWidth = 2.5f
+                    )
+                    drawLine(
+                        color = CyanAccent,
+                        start = bolt2Center,
+                        end = Offset(bolt2Center.x, bolt2Center.y - 35f),
+                        strokeWidth = 2.5f
+                    )
+                }
+
+                5 -> {
+                    // STEP 5: Lower Pivot Bolt & Extraction Path
+                    // Alternator Silhouette
+                    drawCircle(
+                        color = Color(0xFF1E293B),
+                        radius = 35f,
+                        center = Offset(90f, 50f)
+                    )
+                    drawCircle(
+                        color = CyanAccent,
+                        radius = 35f,
+                        center = Offset(90f, 50f),
+                        style = Stroke(2f)
+                    )
+
+                    // Long Pivot Bolt Shaft
+                    drawLine(
+                        color = GoldenBolt,
+                        start = Offset(90f, 85f),
+                        end = Offset(90f, 125f),
+                        strokeWidth = 5f
+                    )
+                    drawCircle(color = GoldenBolt, radius = 8f, center = Offset(90f, 125f))
+
+                    // Extraction Trajectory Curve (downward past wheel arch)
+                    val trajPath = Path().apply {
+                        moveTo(130f, 50f)
+                        cubicTo(190f, 50f, 220f, 95f, canvasWidth - 60f, 100f)
+                    }
+                    drawPath(
+                        path = trajPath,
+                        color = MintGreen,
+                        style = Stroke(
+                            width = 3.5f,
+                            pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 5f))
+                        )
+                    )
+                    // Arrowhead at exit
+                    drawCircle(color = MintGreen, radius = 5f, center = Offset(canvasWidth - 60f, 100f))
+                }
+
+                else -> {
+                    // Generic Infograph: Blueprint Action Schematic
+                    val center = Offset(canvasWidth / 2, canvasHeight / 2)
+                    drawCircle(
+                        color = Color(0xFF1E293B),
+                        radius = 40f,
+                        center = center
+                    )
+                    drawCircle(
+                        color = CyanAccent,
+                        radius = 40f,
+                        center = center,
+                        style = Stroke(2f)
+                    )
+                    // Fastener Crosshair
+                    drawLine(
+                        color = BlueprintGrid,
+                        start = Offset(center.x - 50f, center.y),
+                        end = Offset(center.x + 50f, center.y),
+                        strokeWidth = 1.5f
+                    )
+                    drawLine(
+                        color = BlueprintGrid,
+                        start = Offset(center.x, center.y - 50f),
+                        end = Offset(center.x, center.y + 50f),
+                        strokeWidth = 1.5f
+                    )
+                    drawCircle(color = GoldenBolt, radius = 10f, center = center)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProcedureCompletedCard(onReset: () -> Unit) {
+    Surface(
+        color = MintGreen.copy(alpha = 0.12f),
+        shape = RoundedCornerShape(14.dp),
+        border = androidx.compose.foundation.BorderStroke(1.5.dp, MintGreen),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(
+                imageVector = Icons.Default.CheckCircle,
+                contentDescription = null,
+                tint = MintGreen,
+                modifier = Modifier.size(44.dp)
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Text(
+                text = "PROCEDURE COMPLETED SUCCESSFULLY",
+                color = MintGreen,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = FontFamily.Monospace,
+                letterSpacing = 1.sp
+            )
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Text(
+                text = "All disassembly and servicing steps have been checked off. Verify all fasteners are torqued to specification before test run.",
+                color = TextSecondary,
+                fontSize = 12.5.sp,
+                lineHeight = 18.sp
+            )
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            OutlinedButton(
+                onClick = onReset,
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = MintGreen),
+                border = androidx.compose.foundation.BorderStroke(1.dp, MintGreen)
+            ) {
+                Text(
+                    text = "START PROCEDURE OVER",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Monospace
+                )
             }
         }
     }

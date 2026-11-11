@@ -287,7 +287,7 @@ fun ProceduresListScreen(
                     )
 
                     Text(
-                        text = "BLOWN-OUT & 3D READY",
+                        text = "STEP-BY-STEP INFOGRAPHS",
                         color = MintGreen,
                         fontSize = 9.5.sp,
                         fontWeight = FontWeight.Bold,
@@ -565,7 +565,7 @@ fun ProcedureCard(
 
                 Spacer(modifier = Modifier.weight(1f))
 
-                // 3D Tag
+                // Step-by-Step Tag
                 Surface(
                     color = BlueprintGrid.copy(alpha = 0.5f),
                     shape = RoundedCornerShape(4.dp),
@@ -576,7 +576,7 @@ fun ProcedureCard(
                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                     ) {
                         Text(
-                            text = "3D / 2D",
+                            text = "STEP-BY-STEP",
                             color = CyanAccent,
                             fontSize = 9.sp,
                             fontWeight = FontWeight.Bold,
