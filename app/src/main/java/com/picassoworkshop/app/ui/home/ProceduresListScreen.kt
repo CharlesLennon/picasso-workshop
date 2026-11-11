@@ -48,7 +48,8 @@ fun ProceduresListScreen(
     onDownloadAppUpdateClick: () -> Unit,
     onInstallAppUpdateClick: () -> Unit,
     onDismissDataUpdate: () -> Unit,
-    onDismissAppUpdate: () -> Unit
+    onDismissAppUpdate: () -> Unit,
+    onOpenObdClick: () -> Unit
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf("ALL") }
@@ -138,6 +139,14 @@ fun ProceduresListScreen(
                             )
                         }
                     }
+                    // OBD Diagnostics button
+                    IconButton(onClick = onOpenObdClick) {
+                        Icon(
+                            imageVector = Icons.Default.Speed,
+                            contentDescription = "OBD-II Diagnostics",
+                            tint = CyanAccent
+                        )
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = WorkshopSurfaceElevated)
             )
@@ -186,6 +195,11 @@ fun ProceduresListScreen(
                     selection = currentSelection,
                     onSwitchClick = onSwitchVehicleClick
                 )
+            }
+
+            // OBD-II Diagnostics & Live Telemetry Banner
+            item {
+                ObdDiagnosticsBanner(onOpenObdClick = onOpenObdClick)
             }
 
             // Search Bar & Filters
@@ -817,6 +831,68 @@ fun EmptyProceduresCard(
             ) {
                 Text("RESET SEARCH & FILTERS", color = TextPrimary, fontSize = 11.sp, fontFamily = FontFamily.Monospace)
             }
+        }
+    }
+}
+
+@Composable
+fun ObdDiagnosticsBanner(onOpenObdClick: () -> Unit) {
+    Card(
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = WorkshopSurface),
+        border = androidx.compose.foundation.BorderStroke(1.dp, CyanAccent.copy(alpha = 0.5f)),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onOpenObdClick)
+    ) {
+        Row(
+            modifier = Modifier.padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                Surface(
+                    color = BlueprintGrid.copy(alpha = 0.4f),
+                    shape = CircleShape,
+                    modifier = Modifier.size(40.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(Icons.Default.Speed, contentDescription = null, tint = CyanAccent, modifier = Modifier.size(20.dp))
+                    }
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "OBD-II DIAGNOSTICS & LIVE DATA",
+                            color = TextPrimary,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Surface(
+                            color = MintGreen.copy(alpha = 0.2f),
+                            shape = RoundedCornerShape(4.dp)
+                        ) {
+                            Text(
+                                text = "ELM327",
+                                color = MintGreen,
+                                fontSize = 8.5.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = FontFamily.Monospace,
+                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                    Text(
+                        text = "Scan Engine (7E0), BSI (752), Air Suspension (7A0) & EGS6 faults",
+                        color = TextSecondary,
+                        fontSize = 11.sp
+                    )
+                }
+            }
+
+            Icon(Icons.Default.ChevronRight, contentDescription = null, tint = CyanAccent)
         }
     }
 }

@@ -43,6 +43,13 @@
    - **Data Updater (`WorkshopDataManager.kt`):** Queries `CharlesLennon/picasso-data` decoupled GitHub Releases, hot-reloads `picasso-workshop-data.json` into internal storage without requiring APK upgrades.
    - **100% Offline Garage Fallback:** Bundles complete default offline dataset in `assets/workshop_data.json`.
 
+5. **ELM327 Bluetooth OBD-II & PSA Multi-ECU Diagnostics:**
+   - **PSA Multi-ECU Architecture Targeting:** Queries Generic broadcast (`7DF`), Engine ECU (`7E0`), BSI Body Computer (`752`), Pneumatic Air Suspension (`7A0`), and EGS6 Robotized Transmission (`7E1`).
+   - **Non-Standard & Proprietary DTC Decoding:** Decodes French PSA codes (`P1351` preheating relay, `P1459` EGR stuck, `P0299` turbo underboost, `P1382` alternator slip, `C1196` air suspension compressor timeout, `P1755` EGS6 clutch coherence, `FC82` / `F000` BSI hex faults).
+   - **Direct Repair Guide Linking:** DTC cards provide a direct one-tap link to the relevant PicassoWorkshop step-by-step disassembly guide and 3D exploded model.
+   - **Live Sensor Telemetry:** Real-time digital gauges for Battery Voltage (`ATRV`), Coolant Temp (`0105`), Engine RPM (`010C`), Vehicle Speed (`010D`), Turbo Boost (`010B`), and Common Rail Pressure (`0123`).
+   - **Built-in Demo Simulator:** Enables immediate testing and validation of all diagnostic capabilities without requiring a physical car or ELM adapter.
+
 ---
 
 ## 📐 Architecture & Technology Stack

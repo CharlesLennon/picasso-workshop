@@ -22,8 +22,11 @@ import com.picassoworkshop.app.data.model.EngineType
 import com.picassoworkshop.app.data.model.Generation
 import com.picassoworkshop.app.data.model.Transmission
 import com.picassoworkshop.app.data.model.VehicleSelection
+import com.picassoworkshop.app.obd.BluetoothConnectionManager
+import com.picassoworkshop.app.obd.ObdDiagnosticsCoordinator
 import com.picassoworkshop.app.ui.dialogs.VehicleSelectorSheet
 import com.picassoworkshop.app.ui.home.ProceduresListScreen
+import com.picassoworkshop.app.ui.obd.ObdDiagnosticsScreen
 import com.picassoworkshop.app.ui.procedure.ProcedureDetailScreen
 import com.picassoworkshop.app.ui.theme.DarkBackground
 import com.picassoworkshop.app.ui.theme.PicassoWorkshopTheme
@@ -35,6 +38,8 @@ class MainActivity : ComponentActivity() {
 
     private lateinit var dataManager: WorkshopDataManager
     private lateinit var updateManager: AppUpdateManager
+    private lateinit var bluetoothConnectionManager: BluetoothConnectionManager
+    private lateinit var obdCoordinator: ObdDiagnosticsCoordinator
 
     private val prefs by lazy {
         getSharedPreferences("picasso_prefs", Context.MODE_PRIVATE)
@@ -45,6 +50,8 @@ class MainActivity : ComponentActivity() {
 
         dataManager = WorkshopDataManager(applicationContext)
         updateManager = AppUpdateManager(applicationContext)
+        bluetoothConnectionManager = BluetoothConnectionManager(applicationContext)
+        obdCoordinator = ObdDiagnosticsCoordinator(bluetoothConnectionManager)
 
         // Load saved vehicle selection or default to Mk1 1.6 HDi
         val isFirstLaunch = !prefs.getBoolean("has_selected_vehicle", false)
@@ -59,6 +66,7 @@ class MainActivity : ComponentActivity() {
                     WorkshopApp(
                         dataManager = dataManager,
                         updateManager = updateManager,
+                        obdCoordinator = obdCoordinator,
                         initialSelection = initialSelection,
                         startWithSelectorOpen = isFirstLaunch,
                         onSaveVehicleSelection = { selection ->
@@ -110,6 +118,7 @@ class MainActivity : ComponentActivity() {
 fun WorkshopApp(
     dataManager: WorkshopDataManager,
     updateManager: AppUpdateManager,
+    obdCoordinator: ObdDiagnosticsCoordinator,
     initialSelection: VehicleSelection,
     startWithSelectorOpen: Boolean,
     onSaveVehicleSelection: (VehicleSelection) -> Unit
@@ -176,6 +185,19 @@ fun WorkshopApp(
                     },
                     onDismissAppUpdate = {
                         updateManager.dismissUpdate()
+                    },
+                    onOpenObdClick = {
+                        navController.navigate("obd")
+                    }
+                )
+            }
+
+            composable("obd") {
+                ObdDiagnosticsScreen(
+                    coordinator = obdCoordinator,
+                    onBackClick = { navController.popBackStack() },
+                    onOpenProcedure = { procedureId ->
+                        navController.navigate("procedure/$procedureId")
                     }
                 )
             }
