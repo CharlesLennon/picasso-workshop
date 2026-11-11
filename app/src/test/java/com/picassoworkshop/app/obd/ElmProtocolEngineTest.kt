@@ -99,4 +99,53 @@ class ElmProtocolEngineTest {
         // Fuel Rail Pressure (0B 80 hex = 2944 kPa -> 294 bar)
         assertEquals(294, engine.parseRailPressure("41 23 0B 80\r\r>"))
     }
+
+    @Test
+    fun testRedTeamTruncatedAndMalformedFramesDoNotCrash() {
+        // Red team fuzz: truncated frames that previously threw StringIndexOutOfBoundsException
+        assertTrue(engine.parsePsaUdsService19Response("5902", EcuTarget.ENGINE_EDC16).isEmpty())
+        assertTrue(engine.parsePsaUdsService19Response("59 02 FF", EcuTarget.ENGINE_EDC16).isEmpty())
+        assertTrue(engine.parsePsaUdsService19Response("", EcuTarget.ENGINE_EDC16).isEmpty())
+        assertTrue(engine.parseStandardMode03Response("43", EcuTarget.GENERIC_OBD).isEmpty())
+        assertTrue(engine.parseStandardMode03Response("", EcuTarget.GENERIC_OBD).isEmpty())
+
+        // Negative Response Codes (NRC)
+        assertTrue(engine.parsePsaUdsService19Response("7F 19 22", EcuTarget.ENGINE_EDC16).isEmpty())
+        assertTrue(engine.parsePsaUdsService19Response("7F 14 22", EcuTarget.ENGINE_EDC16).isEmpty())
+
+        // Error and No Data variants
+        assertTrue(engine.parsePsaUdsService19Response("NO DATA\r\n>", EcuTarget.ENGINE_EDC16).isEmpty())
+        assertTrue(engine.parsePsaUdsService19Response("CAN ERROR\r\n>", EcuTarget.ENGINE_EDC16).isEmpty())
+        assertTrue(engine.parsePsaUdsService19Response("BUFFER FULL\r\n>", EcuTarget.ENGINE_EDC16).isEmpty())
+        assertTrue(engine.parseStandardMode03Response("BUS INIT: ... ERROR\r\n>", EcuTarget.GENERIC_OBD).isEmpty())
+    }
+
+    @Test
+    fun testRedTeamIsoTpMultiFrameResponseParsing() {
+        // Multi-frame response with ISO-TP line markers 0: and 1:
+        val multiFrame = """
+            0: 59 02 FF 13 51 00 28
+            1: 51 96 12 28 02 99 00 28
+            >
+        """.trimIndent()
+
+        val faults = engine.parsePsaUdsService19Response(multiFrame, EcuTarget.AIR_SUSPENSION_BAP, sampleDefinitions)
+        assertEquals(3, faults.size)
+        assertEquals("P1351", faults[0].code)
+        assertEquals("C1196", faults[1].code)
+        assertEquals("P0299", faults[2].code)
+    }
+
+    @Test
+    fun testRedTeamBsiHexResponseWithUAndFCodes() {
+        // BSI response with both proprietary F codes and standard CAN U codes
+        val bsiRaw = "BSI: FC82 00 F000 28 U1213 00 U1118\r\n>"
+        val faults = engine.parseBsiHexResponse(bsiRaw)
+
+        val codes = faults.map { it.code }
+        assertTrue(codes.contains("FC82"))
+        assertTrue(codes.contains("F000"))
+        assertTrue(codes.contains("U1213"))
+        assertTrue(codes.contains("U1118"))
+    }
 }

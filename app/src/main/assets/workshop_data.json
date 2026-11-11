@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "dataVersion": "20261111_03",
+  "dataVersion": "20261111_04",
   "releaseDate": "2026-11-11",
   "title": "Citro\u00ebn C4 Grand Picasso Technical Workshop Dataset",
   "quickTorqueLookup": {
@@ -852,6 +852,366 @@
           "description": "High-current 40A supply to rear air suspension 12V pneumatic compressor under the offside sill."
         }
       ]
+    },
+    {
+      "id": "dv6_turbo_electrovalve_check",
+      "title": "Turbocharger Vacuum Solenoid & Boost Pressure Leak Diagnosis",
+      "targetGeneration": "MK1_B58",
+      "targetEngine": "DV6_16_HDI",
+      "category": "TURBO_EXHAUST",
+      "difficulty": "INTERMEDIATE",
+      "estimatedMinutes": 60,
+      "summary": "Diagnostic and replacement procedure for resolving turbo underboost (P0299) and overboost (P0234) on DV6 1.6 HDi. Covers vacuum pump output test, Pierburg vacuum electrovalve solenoid inspection behind engine block, VNT wastegate capsule actuator stroke (10-12mm), and silicone intercooler doser hose split inspection.",
+      "safetyNotes": [
+        "HOT EXHAUST WARNING: Allow turbocharger and exhaust manifold to cool for at least 45 minutes before reaching behind engine block.",
+        "BATTERY DISCONNECT: Switch off ignition and wait 3 minutes for BSI sleep before disconnecting battery when unbolting rear electrical connectors."
+      ],
+      "toolsNeeded": [
+        {
+          "name": "Vacuum Hand Pump & Gauge (Mityvac style)",
+          "size": "0 to -1.0 Bar",
+          "category": "TEST_TOOL",
+          "isCrucial": true
+        },
+        {
+          "name": "10mm Ratchet Ring Spanner (Electrovalve Mounting)",
+          "size": "10mm",
+          "category": "WRENCH",
+          "isCrucial": true
+        },
+        {
+          "name": "7mm Socket / Flat Blade Screwdriver (Hose Clamps)",
+          "size": "7mm",
+          "category": "SOCKET",
+          "isCrucial": true
+        },
+        {
+          "name": "Inspection Mirror & Workshop LED Lamp",
+          "size": "Standard",
+          "category": "HAND_TOOL",
+          "isCrucial": false
+        }
+      ],
+      "torqueSpecs": [
+        {
+          "componentName": "Turbo Electrovalve Mounting Nuts",
+          "torqueNm": 10.0,
+          "fastenerSize": "10mm Hex Nut"
+        },
+        {
+          "componentName": "Intercooler Hose Jubilee Band Clamps",
+          "torqueNm": 5.0,
+          "fastenerSize": "7mm Hex"
+        }
+      ],
+      "steps": [
+        {
+          "stepNumber": 1,
+          "title": "Intercooler Pipe & Boost Hose Split Inspection",
+          "instructions": "Inspect the large rubber boost hose connecting the turbo outlet to the lower intercooler entry, and the upper rubber elbow leading into the throttle air doser. Flex the hoses by hand while inspecting the undersides: oil contamination frequently softens the rubber, causing longitudinal splits that open only under boost (> 1.2 bar).",
+          "tool": {
+            "name": "Workshop LED Lamp",
+            "size": "Inspection",
+            "category": "HAND_TOOL",
+            "isCrucial": true
+          },
+          "caution": "A split hose creates a loud hissing sound under acceleration and throws P0299 with black exhaust smoke."
+        },
+        {
+          "stepNumber": 2,
+          "title": "Vacuum Supply & Reservoir Integrity Check",
+          "instructions": "Locate the mechanical vacuum pump mounted on the left end of the camshaft. Disconnect the main vacuum feed pipe and connect a vacuum hand gauge. Start engine and verify vacuum reaches -0.8 to -0.9 bar within 5 seconds. If vacuum is weak, inspect the one-way check valve on the brake servo feed line.",
+          "tool": {
+            "name": "Vacuum Hand Pump & Gauge",
+            "size": "0 to -1.0 Bar",
+            "category": "TEST_TOOL",
+            "isCrucial": true
+          }
+        },
+        {
+          "stepNumber": 3,
+          "title": "Turbo VNT Actuator Free Stroke Verification",
+          "instructions": "Reach behind the turbocharger turbine housing to access the VNT vacuum capsule operating rod. Connect the vacuum pump directly to the capsule nipple. Apply vacuum: the wastegate rod must move smoothly downwards by 10 to 12 mm without sticking. Release vacuum: the internal return spring must push the rod firmly back to rest.",
+          "warning": "If the rod catches, sticks, or does not travel full stroke, the internal variable geometry vanes are carbonised. DO NOT force the rod with pliers; use foaming intake/turbo cleaner or remove turbo for ultrasonic cleaning.",
+          "tool": {
+            "name": "Vacuum Hand Pump & Gauge",
+            "size": "0 to -1.0 Bar",
+            "category": "TEST_TOOL",
+            "isCrucial": true
+          }
+        },
+        {
+          "stepNumber": 4,
+          "title": "Pierburg Turbo Vacuum Electrovalve Solenoid Replacement",
+          "instructions": "Raise vehicle safely on axle stands. The Pierburg electrovalve (OEM 1618.X2) is mounted on the rear lower right face of the engine cylinder block, just above the right driveshaft intermediate bearing. Disconnect the 2-pin electrical plug and two vacuum pipes (white band = turbo feed; plain = vacuum reservoir). Remove the two 10mm retaining nuts. Fit replacement solenoid, torque nuts to 10 Nm, and reconnect vacuum hoses firmly.",
+          "tool": {
+            "name": "10mm Ratchet Ring Spanner",
+            "size": "10mm",
+            "category": "WRENCH",
+            "isCrucial": true
+          },
+          "caution": "Inspect the small foam air breather filter on the atmospheric port of the electrovalve: if saturated with road grit or oil mist, it causes delayed turbo response."
+        }
+      ],
+      "explodedParts": [
+        {
+          "id": "part_turbo_electrovalve",
+          "calloutNumber": 1,
+          "name": "Pierburg Turbo Vacuum Solenoid Electrovalve",
+          "oemPartNumber": "1618.X2",
+          "fastenerType": "2x M6 Hex Nuts (10mm)",
+          "torqueNm": 10.0
+        },
+        {
+          "id": "part_intercooler_elbow",
+          "calloutNumber": 2,
+          "name": "Upper Intercooler Air Doser Rubber Hose",
+          "oemPartNumber": "0382.NP",
+          "fastenerType": "2x Jubilee Worm Clamps (7mm)",
+          "torqueNm": 5.0
+        }
+      ]
+    },
+    {
+      "id": "dv6_egr_valve_servicing",
+      "title": "EGR Valve Cleaning, Replacement & Learning Adaptation",
+      "targetGeneration": "MK1_B58",
+      "targetEngine": "DV6_16_HDI",
+      "category": "FUEL_AND_INTAKE",
+      "difficulty": "ADVANCED",
+      "estimatedMinutes": 90,
+      "summary": "Step-by-step servicing and replacement of the motorized Valeo EGR valve on the rear of the DV6 1.6 HDi cylinder head. Covers windscreen cowl removal for firewall clearance, stainless steel exhaust gas pipe clamp, fastener removal, carbon cleaning, and post-installation adaptation.",
+      "safetyNotes": [
+        "COOLING DOWN: Allow exhaust manifold and cylinder head to cool completely before unbolting stainless steel EGR pipe.",
+        "BATTERY DISCONNECT: Always perform 3-minute BSI sleep before disconnecting battery negative clamp."
+      ],
+      "toolsNeeded": [
+        {
+          "name": "1/4-inch Drive Ratchet with Short & Long Extensions",
+          "size": "1/4-inch Drive",
+          "category": "SOCKET",
+          "isCrucial": true
+        },
+        {
+          "name": "Torx Bit Socket",
+          "size": "T25 & T30",
+          "category": "TORX",
+          "isCrucial": true
+        },
+        {
+          "name": "8mm Hex & 10mm Deep Socket",
+          "size": "8mm & 10mm",
+          "category": "SOCKET",
+          "isCrucial": true
+        },
+        {
+          "name": "Special Clic-R or Pincer Pliers (EGR Pipe Band Clamp)",
+          "size": "Clic-R",
+          "category": "HAND_TOOL",
+          "isCrucial": true
+        },
+        {
+          "name": "Carburettor / Brake Parts Cleaner & Brass Brush",
+          "size": "Aerosol",
+          "category": "HAND_TOOL",
+          "isCrucial": false
+        }
+      ],
+      "torqueSpecs": [
+        {
+          "componentName": "EGR Valve Mounting Bolts (2x M6)",
+          "torqueNm": 10.0,
+          "fastenerSize": "8mm Hex / Torx T30"
+        },
+        {
+          "componentName": "Stainless Steel EGR Gas Pipe Flange Bolts",
+          "torqueNm": 10.0,
+          "fastenerSize": "8mm Hex"
+        },
+        {
+          "componentName": "Windscreen Wiper Arm Nut",
+          "torqueNm": 30.0,
+          "fastenerSize": "16mm Hex Nut"
+        }
+      ],
+      "steps": [
+        {
+          "stepNumber": 1,
+          "title": "Wiper Arms & Scuttle Cowl Panel Removal",
+          "instructions": "Mark wiper blade resting positions on windscreen with masking tape. Pop off the plastic caps, remove 16mm nuts, and release wiper arms using a puller. Unclip the plastic scuttle tray and remove the rigid metal firewall sound deadening partition to gain direct line-of-sight to the rear of the engine cylinder head.",
+          "tool": {
+            "name": "Wiper Arm Puller & Socket",
+            "size": "16mm",
+            "category": "HAND_TOOL",
+            "isCrucial": true
+          }
+        },
+        {
+          "stepNumber": 2,
+          "title": "Air Intake Trunking & Fuel Filter Bracket Release",
+          "instructions": "Loosen hose clamp on the plastic turbo inlet pipe. Unclip the crankcase breather pipe. Release the fuel filter mounting bracket and swing it slightly aside without disconnecting diesel fuel lines to maximize hand clearance.",
+          "tool": {
+            "name": "7mm Socket & Torx T20",
+            "size": "7mm & T20",
+            "category": "SOCKET",
+            "isCrucial": true
+          }
+        },
+        {
+          "stepNumber": 3,
+          "title": "Stainless EGR Gas Pipe & Electrical Plug Disconnection",
+          "instructions": "Reach behind the cylinder head to the right of the fuel filter. Press the wire retaining latch on the 5-pin grey EGR valve electrical connector and unhook. Using special Clic-R pliers or a flat screwdriver, release the round stainless band clamp securing the corrugated EGR cooler pipe to the valve body.",
+          "tool": {
+            "name": "Clic-R Pliers & Pick",
+            "size": "Special Pliers",
+            "category": "HAND_TOOL",
+            "isCrucial": true
+          },
+          "caution": "Do not bend or crease the corrugated stainless steel EGR gas tube; metal fatigue will cause exhaust gas leaks into the cabin."
+        },
+        {
+          "stepNumber": 4,
+          "title": "EGR Valve Body Unbolting & Extraction",
+          "instructions": "Using a 1/4-inch drive ratchet, universal joint, and 8mm socket (or T30 Torx bit), loosen the two mounting bolts holding the valve body to the aluminium intake housing. Carefully lift out the valve and remove the stainless steel metal gasket. Clean carbon deposits with solvent and brass brush. On refit: always fit a new metal shim gasket, torque mounting bolts to 10 Nm, and reassemble scuttle.",
+          "tool": {
+            "name": "1/4-inch Ratchet with 8mm Socket & Universal Joint",
+            "size": "8mm Hex",
+            "category": "SOCKET",
+            "isCrucial": true
+          },
+          "warning": "After reinstalling, perform an EGR valve adaptation reset using the OBD diagnostic function so the engine ECU recalibrates the closed position voltage."
+        }
+      ],
+      "explodedParts": [
+        {
+          "id": "part_valeo_egr_valve",
+          "calloutNumber": 1,
+          "name": "Valeo Motorized EGR Valve Body",
+          "oemPartNumber": "1618.59",
+          "fastenerType": "2x M6 Bolts (8mm Hex / T30)",
+          "torqueNm": 10.0
+        },
+        {
+          "id": "part_egr_stainless_clamp",
+          "calloutNumber": 2,
+          "name": "Stainless Corrugated Gas Pipe Clamp",
+          "oemPartNumber": "1628.3J",
+          "fastenerType": "Clic-R Spring Band Clamp",
+          "torqueNm": null
+        }
+      ]
+    },
+    {
+      "id": "egs6_hydraulic_actuator_service",
+      "title": "EGS6 / BMP6 Robotised Gearbox Hydraulic System Servicing & Pressure Check",
+      "targetGeneration": "MK1_B58",
+      "targetEngine": "DV6_16_HDI",
+      "category": "BRAKES_AND_CHASSIS",
+      "difficulty": "ADVANCED",
+      "estimatedMinutes": 75,
+      "summary": "Inspection, depressurization, and fluid top-up for the CFC300P robotised 6-speed gearbox hydraulic control block. Explains Tutela CS Speed fluid level check, hydraulic accumulator pressure leak-down test (> 38 bar), electric pump motor relay check, and clutch bite-point calibration.",
+      "safetyNotes": [
+        "HIGH HYDRAULIC PRESSURE WARNING: The EGS hydraulic accumulator stores fluid at up to 50 bar. Always depressurize using diagnostic software or wait for complete depressurization before opening actuator reservoir.",
+        "FLUID SPECIFICATION: Use ONLY Tutela CS Speed or Petronas Tutela Transmission CS Speed 75W synthetic hydraulic oil. Never use standard ATF, brake fluid, or gear oil; this will destroy internal solenoid Viton seals."
+      ],
+      "toolsNeeded": [
+        {
+          "name": "10mm Hex & 13mm Socket (Battery & Air Box Removal)",
+          "size": "10mm & 13mm",
+          "category": "SOCKET",
+          "isCrucial": true
+        },
+        {
+          "name": "Torx Screwdriver",
+          "size": "T20",
+          "category": "TORX",
+          "isCrucial": true
+        },
+        {
+          "name": "Diagnostic OBD Scanner (ELM327 with EGS6 profile)",
+          "size": "OBD-II",
+          "category": "TEST_TOOL",
+          "isCrucial": true
+        },
+        {
+          "name": "Clean Fluid Syringe & Flexible Hose (Level Adjustment)",
+          "size": "100ml Syringe",
+          "category": "HAND_TOOL",
+          "isCrucial": true
+        }
+      ],
+      "torqueSpecs": [
+        {
+          "componentName": "EGS Hydraulic Reservoir Filler Cap",
+          "torqueNm": 4.0,
+          "fastenerSize": "Hand tight"
+        },
+        {
+          "componentName": "Battery Tray Mounting Bolts",
+          "torqueNm": 10.0,
+          "fastenerSize": "10mm Hex"
+        }
+      ],
+      "steps": [
+        {
+          "stepNumber": 1,
+          "title": "Air Filter Box & Battery Tray Removal for Gearbox Access",
+          "instructions": "Disconnect battery following BSI 3-minute sleep. Remove battery, battery tray, and complete engine air cleaner housing. The aluminium EGS hydraulic actuator block is mounted directly on top of the transmission casing beneath the battery compartment.",
+          "tool": {
+            "name": "10mm Socket & Ratchet",
+            "size": "10mm",
+            "category": "SOCKET",
+            "isCrucial": true
+          }
+        },
+        {
+          "stepNumber": 2,
+          "title": "Hydraulic Pressure Depressurization & Level Verification",
+          "instructions": "Connect OBD diagnostic tool to EGS6 transmission ECU. Execute hydraulic depressurization command (or allow vehicle to sit with driver door closed and ignition off for 4 hours). Unscrew the black breather filler plug on the translucent reservoir: fluid level must sit exactly between MIN and MAX marks when depressurized.",
+          "tool": {
+            "name": "Diagnostic Tool & Syringe",
+            "size": "OBD / 100ml",
+            "category": "TEST_TOOL",
+            "isCrucial": true
+          },
+          "caution": "If fluid level is checked while system is pressurized (45 bar), fluid will appear artificially low, leading to overfilling and blow-by leakage through breather."
+        },
+        {
+          "stepNumber": 3,
+          "title": "Hydraulic Accumulator Sphere Leak-Down & Pump Priming Test",
+          "instructions": "Turn ignition ON without starting engine. Listen for the electric pump motor whining sound (front left wing). The pump should build pressure and cut off within 10 to 15 seconds. If pump runs continuously (> 30s) or cycles every time a gear is selected, the nitrogen diaphragm in the accumulator sphere has failed (causing P0944 / P0868).",
+          "warning": "A failing accumulator sphere causes sudden drop to Neutral at roundabouts or traffic lights. Replace sphere immediately."
+        },
+        {
+          "stepNumber": 4,
+          "title": "Brake Light Switch Adjustment & Clutch Bite-Point Adaptation",
+          "instructions": "Inspect the 4-pin brake pedal switch in the driver footwell. Pull down the self-ratcheting plunger fully, then gently let the brake pedal return to set switch clearance. In OBD diagnostics, run Clutch Adaptation routine: vehicle will execute automatic gear shift clicks while learning clutch engagement point.",
+          "tool": {
+            "name": "Diagnostic Scanner & Flashlight",
+            "size": "OBD",
+            "category": "TEST_TOOL",
+            "isCrucial": true
+          }
+        }
+      ],
+      "explodedParts": [
+        {
+          "id": "part_egs_accumulator_sphere",
+          "calloutNumber": 1,
+          "name": "EGS Hydraulic Nitrogen Accumulator Sphere",
+          "oemPartNumber": "2509.S9",
+          "fastenerType": "27mm Hex Threaded Base",
+          "torqueNm": 35.0
+        },
+        {
+          "id": "part_egs_reservoir_plug",
+          "calloutNumber": 2,
+          "name": "Actuator Breather Filler Cap",
+          "oemPartNumber": "2509.R7",
+          "fastenerType": "Plastic Quarter-Turn Plug",
+          "torqueNm": null
+        }
+      ]
     }
   ],
   "diagnosticEcus": [
@@ -1004,7 +1364,7 @@
         "EGR valve electrical actuator motor gear wear",
         "Faulty EGR position sensor wiring"
       ],
-      "procedureIdLink": null,
+      "procedureIdLink": "dv6_egr_valve_servicing",
       "severity": "CRITICAL"
     },
     {
@@ -1018,7 +1378,7 @@
         "Vacuum hose cracked, perished, or detached from wastegate actuator",
         "Turbocharger variable nozzle (VNT) mechanism carbonized and binding"
       ],
-      "procedureIdLink": null,
+      "procedureIdLink": "dv6_turbo_electrovalve_check",
       "severity": "CRITICAL"
     },
     {
@@ -1031,7 +1391,7 @@
         "Turbo vacuum solenoid stuck venting to atmospheric pressure",
         "Faulty MAP sensor signal reading high"
       ],
-      "procedureIdLink": null,
+      "procedureIdLink": "dv6_turbo_electrovalve_check",
       "severity": "CRITICAL"
     },
     {
@@ -1182,7 +1542,7 @@
         "Sensor internal resistive track water corroded",
         "Sensor harness unplugged or pinched"
       ],
-      "procedureIdLink": null,
+      "procedureIdLink": "c4_rear_air_suspension_bellows",
       "severity": "CRITICAL"
     },
     {
@@ -1195,7 +1555,7 @@
         "Sensor water ingress",
         "Wiring harness damage"
       ],
-      "procedureIdLink": null,
+      "procedureIdLink": "c4_rear_air_suspension_bellows",
       "severity": "CRITICAL"
     },
     {
@@ -1209,7 +1569,7 @@
         "Hydraulic slave cylinder internal seal leakage",
         "EGS6 clutch bite-point calibration adaptation needed"
       ],
-      "procedureIdLink": null,
+      "procedureIdLink": "egs6_hydraulic_actuator_service",
       "severity": "CRITICAL"
     },
     {
@@ -1222,7 +1582,7 @@
         "Electric hydraulic pump motor relay or brushes worn",
         "Low Tutela CS Speed fluid level in EGS actuator reservoir"
       ],
-      "procedureIdLink": null,
+      "procedureIdLink": "egs6_hydraulic_actuator_service",
       "severity": "CRITICAL"
     },
     {
@@ -1235,7 +1595,7 @@
         "Accumulator sphere lost charge",
         "Fluid leak from actuator block unions"
       ],
-      "procedureIdLink": null,
+      "procedureIdLink": "egs6_hydraulic_actuator_service",
       "severity": "CRITICAL"
     },
     {
@@ -1247,7 +1607,7 @@
         "Faulty four-pin brake light switch above brake pedal",
         "Brake switch ratchet clip out of adjustment"
       ],
-      "procedureIdLink": "c4_picasso_mk1_fuse_directory",
+      "procedureIdLink": "egs6_hydraulic_actuator_service",
       "severity": "WARNING"
     },
     {
@@ -1312,6 +1672,84 @@
       ],
       "procedureIdLink": "c4_picasso_mk1_fuse_directory",
       "severity": "WARNING"
+    },
+    {
+      "code": "P0490",
+      "ecuId": "ENGINE_EDC16",
+      "title": "EGR Valve Control Circuit High / Valve Stuck Closed",
+      "technicalDescription": "Engine management ECU detected continuous high voltage feedback on EGR position sensor, indicating valve cannot open against spring or motor gear stripped.",
+      "commonCauses": [
+        "Carbon soot buildup binding Valeo EGR valve mechanism",
+        "EGR motor electrical connector water ingress",
+        "EGR 5-pin harness chafed behind cylinder head"
+      ],
+      "procedureIdLink": "dv6_egr_valve_servicing",
+      "severity": "CRITICAL"
+    },
+    {
+      "code": "P0472",
+      "ecuId": "ENGINE_EDC16",
+      "title": "DPF Exhaust Differential Pressure Sensor Signal Low / Hose Melted",
+      "technicalDescription": "Measured pressure difference across particulate filter drops to 0 mbar under load, indicating upstream pressure tube disconnected or melted.",
+      "commonCauses": [
+        "Rubber silicone pressure sampling hose melted above turbo exhaust elbow (very common on DV6)",
+        "Differential pressure sensor internal diaphragm split",
+        "Pressure tube metal pipe blocked with hard carbon at DPF inlet"
+      ],
+      "procedureIdLink": "c4_picasso_mk1_fuse_directory",
+      "severity": "CRITICAL"
+    },
+    {
+      "code": "P0335",
+      "ecuId": "ENGINE_EDC16",
+      "title": "Crankshaft Position Sensor (CKP) Circuit Malfunction",
+      "technicalDescription": "Engine management ECU lost crankshaft reference pulses during cranking or running, resulting in immediate engine cutout.",
+      "commonCauses": [
+        "Magnetic reluctor target ring on crankshaft pulley corroded or swollen with rust",
+        "Crankshaft sensor tip contaminated with metallic brake/clutch dust",
+        "Sensor wiring harness chafed near lower auxiliary belt guide"
+      ],
+      "procedureIdLink": "dv6_alternator_removal",
+      "severity": "CRITICAL"
+    },
+    {
+      "code": "P0100",
+      "ecuId": "ENGINE_EDC16",
+      "title": "Mass Air Flow (MAF) Sensor Signal Range / Air Leak",
+      "technicalDescription": "Calculated air mass volume does not match engine displacement and boost pressure setpoint.",
+      "commonCauses": [
+        "Split orange rubber seal on turbo intake plastic inlet pipe",
+        "Hot-wire element contaminated with oil from PCV breather",
+        "MAF sensor plug pins oxidized"
+      ],
+      "procedureIdLink": "dv6_fuel_filter_replacement",
+      "severity": "WARNING"
+    },
+    {
+      "code": "P0524",
+      "ecuId": "ENGINE_EDC16",
+      "title": "Engine Oil Pressure Too Low (Risk of Turbo Oil Starvation)",
+      "technicalDescription": "Engine oil pressure switch opened while engine running above 1500 RPM. Immediate risk of catastrophic turbocharger bearing failure.",
+      "commonCauses": [
+        "Micro-mesh gauze filter blocked inside lower turbo oil feed banjo bolt (PSA bulletin)",
+        "Oil sump oil pump pickup strainer clogged with carbon sludge",
+        "Incorrect engine oil viscosity (must be 5W-30 Low SAPS C2)"
+      ],
+      "procedureIdLink": "c4_picasso_mk1_fuse_directory",
+      "severity": "CRITICAL"
+    },
+    {
+      "code": "C1131",
+      "ecuId": "AIR_SUSPENSION_BAP",
+      "title": "Rear Air Suspension Compressor Motor Supply / Relay Open Circuit",
+      "technicalDescription": "Suspension ECU commanded compressor ON but detects zero current draw or open circuit on supply feed.",
+      "commonCauses": [
+        "Blown 40A Maxi Fuse MF3 in battery-top BPGA power distribution unit",
+        "Compressor internal thermal cut-out switch open due to air leak causing continuous running",
+        "Compressor earth ground eyelet corroded on rear underside chassis rail"
+      ],
+      "procedureIdLink": "c4_rear_air_suspension_bellows",
+      "severity": "CRITICAL"
     }
   ],
   "livePids": [

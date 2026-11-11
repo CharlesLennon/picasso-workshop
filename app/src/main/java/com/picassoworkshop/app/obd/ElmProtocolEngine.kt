@@ -26,12 +26,18 @@ class ElmProtocolEngine {
     }
 
     fun cleanResponse(raw: String): String {
-        return raw.replace(">", "")
+        // Strip ISO-TP multi-frame line headers (e.g. "0: 59 02 ...", "1: 51 96 ...")
+        val strippedLines = raw.lines().joinToString(" ") { line ->
+            line.trimStart().replace(Regex("""^[0-9A-Fa-f]:\s*"""), "")
+        }
+
+        return strippedLines.replace(">", "")
             .replace("\r", "")
             .replace("\n", "")
             .replace(" ", "")
             .replace("SEARCHING...", "")
             .replace("BUSINIT...", "")
+            .replace("STOPPED", "")
             .trim()
     }
 
@@ -41,7 +47,10 @@ class ElmProtocolEngine {
                 upper.contains("UNABLE") ||
                 upper.contains("BUSY") ||
                 upper.contains("?") ||
-                upper.contains("STOPPED")
+                upper.contains("STOPPED") ||
+                upper.contains("BUFFERFULL") ||
+                upper.contains("NODATA") ||
+                upper.startsWith("7F") // UDS Negative Response Code (e.g. 7F 19 22, 7F 14 22)
     }
 
     /**
@@ -55,7 +64,7 @@ class ElmProtocolEngine {
         definitions: List<DtcDefinition> = emptyList()
     ): List<DiagnosticFault> {
         val cleaned = cleanResponse(rawResponse)
-        if (cleaned.isBlank() || cleaned.contains(ELM_NO_DATA) || isErrorResponse(cleaned)) {
+        if (cleaned.isBlank() || cleaned.contains(ELM_NO_DATA) || cleaned.contains("NODATA") || isErrorResponse(cleaned)) {
             return emptyList()
         }
 
@@ -96,7 +105,7 @@ class ElmProtocolEngine {
         definitions: List<DtcDefinition> = emptyList()
     ): List<DiagnosticFault> {
         val cleaned = cleanResponse(rawResponse)
-        if (cleaned.isBlank() || cleaned.contains(ELM_NO_DATA) || isErrorResponse(cleaned)) {
+        if (cleaned.isBlank() || cleaned.contains(ELM_NO_DATA) || cleaned.contains("NODATA") || isErrorResponse(cleaned)) {
             return emptyList()
         }
 
@@ -104,6 +113,9 @@ class ElmProtocolEngine {
         val marker = "5902"
         val idx = cleaned.indexOf(marker)
         if (idx < 0) return emptyList()
+
+        // Guard against truncated responses or negative response fragments (Crash safety)
+        if (cleaned.length < idx + 6) return emptyList()
 
         // Drop marker and status mask byte (59 02 FF -> drop 6 chars)
         val payload = cleaned.substring(idx + 6)
@@ -133,13 +145,13 @@ class ElmProtocolEngine {
         definitions: List<DtcDefinition> = emptyList()
     ): List<DiagnosticFault> {
         val cleaned = cleanResponse(rawResponse)
-        if (cleaned.isBlank() || cleaned.contains(ELM_NO_DATA) || isErrorResponse(cleaned)) {
+        if (cleaned.isBlank() || cleaned.contains(ELM_NO_DATA) || cleaned.contains("NODATA") || isErrorResponse(cleaned)) {
             return emptyList()
         }
 
         val faults = mutableListOf<DiagnosticFault>()
-        // Match 4-hex character patterns starting with 'F'
-        val regex = Regex("""F[0-9A-F]{3}""")
+        // Match PSA BSI codes starting with 'F' (e.g. F000, FC82, F015) or 'U'/'B' (e.g. U1213, U1118)
+        val regex = Regex("""(?:F[0-9A-F]{3}|[UB][0-9A-F]{4})""")
         val matches = regex.findAll(cleaned.uppercase())
 
         for (match in matches) {
