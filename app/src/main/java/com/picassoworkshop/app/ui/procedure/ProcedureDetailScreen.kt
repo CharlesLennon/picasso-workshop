@@ -4,9 +4,11 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -24,6 +26,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -31,9 +34,120 @@ import androidx.compose.ui.unit.sp
 import com.picassoworkshop.app.data.model.DifficultyLevel
 import com.picassoworkshop.app.data.model.DisassemblyStep
 import com.picassoworkshop.app.data.model.RepairProcedure
-import com.picassoworkshop.app.data.model.ToolRequirement
 import com.picassoworkshop.app.data.model.TorqueSpec
 import com.picassoworkshop.app.ui.theme.*
+
+/**
+ * Unified model representing either a physical workshop tool (spanner, socket, torx, pin)
+ * or a mechanical fastener/bit (bolts, nuts, clips, fuses, replacement parts)
+ * needed to perform the tutorial.
+ */
+data class ToolOrBit(
+    val id: String,
+    val name: String,
+    val spec: String,
+    val category: ToolOrBitType,
+    val isCrucial: Boolean = true,
+    val stepNumbers: List<Int> = emptyList(),
+    val torqueNm: Double? = null,
+    val oemPartNumber: String? = null
+)
+
+enum class ToolOrBitType(val label: String, val icon: ImageVector) {
+    ALL("All Items", Icons.Default.AllInclusive),
+    WRENCH_SOCKET("Spanners & Sockets", Icons.Default.Build),
+    TORX_DRIVER("Torx & Drivers", Icons.Default.Handyman),
+    PINS_SPECIAL("Pins & Special", Icons.Default.PushPin),
+    FASTENERS_BITS("Fasteners & Bits", Icons.Default.Hardware),
+    TEST_ELECTRICAL("Test & Safety", Icons.Default.Speed)
+}
+
+/**
+ * Automatically extracts and correlates all required workshop tools and mechanical
+ * fasteners/bits from the tutorial's procedure definition.
+ */
+fun extractToolsAndBits(procedure: RepairProcedure): List<ToolOrBit> {
+    val items = mutableListOf<ToolOrBit>()
+
+    // 1. Process toolsNeeded
+    procedure.toolsNeeded.forEachIndexed { idx, tool ->
+        val cat = when {
+            tool.category.contains("TORX", ignoreCase = true) ||
+                    tool.name.contains("Torx", ignoreCase = true) ||
+                    tool.size.contains("T20", ignoreCase = true) ||
+                    tool.size.contains("T30", ignoreCase = true) -> ToolOrBitType.TORX_DRIVER
+
+            tool.category.contains("PIN", ignoreCase = true) ||
+                    tool.name.contains("Pin", ignoreCase = true) ||
+                    tool.name.contains("Pry", ignoreCase = true) ||
+                    tool.name.contains("Clip", ignoreCase = true) ||
+                    tool.name.contains("Puller", ignoreCase = true) -> ToolOrBitType.PINS_SPECIAL
+
+            tool.category.contains("TEST", ignoreCase = true) ||
+                    tool.name.contains("Multimeter", ignoreCase = true) ||
+                    tool.name.contains("Test", ignoreCase = true) -> ToolOrBitType.TEST_ELECTRICAL
+
+            tool.category.contains("WRENCH", ignoreCase = true) ||
+                    tool.category.contains("SOCKET", ignoreCase = true) ||
+                    tool.name.contains("Spanner", ignoreCase = true) ||
+                    tool.name.contains("Socket", ignoreCase = true) ||
+                    tool.name.contains("Torque Wrench", ignoreCase = true) -> ToolOrBitType.WRENCH_SOCKET
+
+            else -> ToolOrBitType.WRENCH_SOCKET
+        }
+
+        // Correlate with disassembly steps
+        val matchingSteps = procedure.steps.filter { step ->
+            (step.tool != null && (step.tool.name.contains(tool.name, ignoreCase = true) || tool.name.contains(step.tool.name, ignoreCase = true))) ||
+                    (tool.size.isNotBlank() && step.instructions.contains(tool.size, ignoreCase = true)) ||
+                    (tool.name.isNotBlank() && step.instructions.contains(tool.name.split(" ").firstOrNull() ?: "", ignoreCase = true))
+        }.map { it.stepNumber }.distinct()
+
+        val matchedTorque = procedure.torqueSpecs.firstOrNull { spec ->
+            spec.fastenerSize.contains(tool.size, ignoreCase = true) ||
+                    tool.name.contains(spec.componentName, ignoreCase = true)
+        }?.torqueNm
+
+        items.add(
+            ToolOrBit(
+                id = "tool_$idx",
+                name = tool.name,
+                spec = tool.size,
+                category = cat,
+                isCrucial = tool.isCrucial,
+                stepNumbers = matchingSteps,
+                torqueNm = matchedTorque
+            )
+        )
+    }
+
+    // 2. Process explodedParts (fasteners, bolts, nuts, clips, replacement bits)
+    procedure.explodedParts.forEach { part ->
+        if (part.fastenerType.isNotBlank() || part.torqueNm != null) {
+            val matchingSteps = procedure.steps.filter { step ->
+                step.associatedPartId == part.id ||
+                        step.calloutNumber == part.calloutNumber ||
+                        step.instructions.contains(part.name, ignoreCase = true) ||
+                        (part.fastenerType.isNotBlank() && step.instructions.contains(part.fastenerType.split(" ").firstOrNull() ?: "", ignoreCase = true))
+            }.map { it.stepNumber }.distinct()
+
+            items.add(
+                ToolOrBit(
+                    id = "part_${part.id}",
+                    name = part.name,
+                    spec = part.fastenerType.ifBlank { "OEM ${part.oemPartNumber}" },
+                    category = ToolOrBitType.FASTENERS_BITS,
+                    isCrucial = true,
+                    stepNumbers = matchingSteps,
+                    torqueNm = part.torqueNm,
+                    oemPartNumber = part.oemPartNumber.ifBlank { null }
+                )
+            )
+        }
+    }
+
+    return items
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,7 +157,30 @@ fun ProcedureDetailScreen(
 ) {
     var completedSteps by remember { mutableStateOf(setOf<Int>()) }
     var showSafetyNotes by remember { mutableStateOf(procedure.safetyNotes.isNotEmpty()) }
-    var showToolingSpecs by remember { mutableStateOf(false) }
+    var showToolsSection by remember { mutableStateOf(true) }
+
+    // Tools & Bits state
+    val allToolsAndBits = remember(procedure) { extractToolsAndBits(procedure) }
+    var activeToolOrBitFilter by remember { mutableStateOf<ToolOrBit?>(null) }
+    var toolsSearchQuery by remember { mutableStateOf("") }
+    var selectedToolCategory by remember { mutableStateOf(ToolOrBitType.ALL) }
+    var trayCheckedIds by remember { mutableStateOf(setOf<String>()) }
+
+    // Compute steps filtered by the selected tool or bit
+    val displayedSteps = remember(procedure.steps, activeToolOrBitFilter) {
+        if (activeToolOrBitFilter == null) {
+            procedure.steps
+        } else {
+            val filter = activeToolOrBitFilter!!
+            val directMatches = procedure.steps.filter { step ->
+                filter.stepNumbers.contains(step.stepNumber) ||
+                        (filter.spec.isNotBlank() && step.instructions.contains(filter.spec, ignoreCase = true)) ||
+                        (filter.name.isNotBlank() && step.instructions.contains(filter.name.split(" ").firstOrNull() ?: "", ignoreCase = true)) ||
+                        (step.tool != null && (step.tool.name.contains(filter.name, ignoreCase = true) || filter.name.contains(step.tool.name, ignoreCase = true)))
+            }
+            if (directMatches.isNotEmpty()) directMatches else procedure.steps
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -124,19 +261,107 @@ fun ProcedureDetailScreen(
                 }
             }
 
-            // 3. Quick Tools & Fastener Torque Quick Reference (Collapsible)
-            if (procedure.toolsNeeded.isNotEmpty() || procedure.torqueSpecs.isNotEmpty()) {
+            // 3. Dedicated Tools & Bits Needed Filter List
+            if (allToolsAndBits.isNotEmpty()) {
                 item {
-                    ToolingAndTorqueSummaryCard(
-                        tools = procedure.toolsNeeded,
-                        torqueSpecs = procedure.torqueSpecs,
-                        isExpanded = showToolingSpecs,
-                        onToggle = { showToolingSpecs = !showToolingSpecs }
+                    ToolsAndBitsFilterSection(
+                        toolsAndBits = allToolsAndBits,
+                        activeFilter = activeToolOrBitFilter,
+                        onSelectFilter = { selected ->
+                            activeToolOrBitFilter = if (activeToolOrBitFilter?.id == selected?.id) null else selected
+                        },
+                        searchQuery = toolsSearchQuery,
+                        onSearchQueryChange = { toolsSearchQuery = it },
+                        selectedCategory = selectedToolCategory,
+                        onCategorySelect = { selectedToolCategory = it },
+                        trayCheckedIds = trayCheckedIds,
+                        onToggleTrayItem = { id ->
+                            trayCheckedIds = if (trayCheckedIds.contains(id)) {
+                                trayCheckedIds - id
+                            } else {
+                                trayCheckedIds + id
+                            }
+                        },
+                        isExpanded = showToolsSection,
+                        onToggleExpand = { showToolsSection = !showToolsSection }
                     )
                 }
             }
 
-            // 4. Section Title: Step-by-Step Infographs
+            // 4. Active Tool Filter Banner (when filtering steps by a specific tool/bit)
+            if (activeToolOrBitFilter != null) {
+                item {
+                    Surface(
+                        color = CyanAccent.copy(alpha = 0.15f),
+                        shape = RoundedCornerShape(12.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, CyanAccent),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(14.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Surface(
+                                    color = CyanAccent,
+                                    shape = CircleShape,
+                                    modifier = Modifier.size(30.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            imageVector = Icons.Default.FilterList,
+                                            contentDescription = null,
+                                            tint = WorkshopBackground,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                }
+                                Column {
+                                    Text(
+                                        text = "FILTERING STEPS BY TOOL / BIT",
+                                        color = CyanAccent,
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        fontFamily = FontFamily.Monospace,
+                                        letterSpacing = 0.5.sp
+                                    )
+                                    Text(
+                                        text = "${activeToolOrBitFilter!!.name} (${activeToolOrBitFilter!!.spec})",
+                                        color = TextPrimary,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        text = "Showing ${displayedSteps.size} of ${procedure.steps.size} steps",
+                                        color = TextSecondary,
+                                        fontSize = 11.sp,
+                                        fontFamily = FontFamily.Monospace
+                                    )
+                                }
+                            }
+
+                            TextButton(
+                                onClick = { activeToolOrBitFilter = null },
+                                colors = ButtonDefaults.textButtonColors(contentColor = MintGreen)
+                            ) {
+                                Text(
+                                    text = "SHOW ALL",
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 11.sp
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 5. Section Title: Step-by-Step Infographs
             item {
                 Row(
                     modifier = Modifier
@@ -155,7 +380,11 @@ fun ProcedureDetailScreen(
                             modifier = Modifier.size(width = 4.dp, height = 16.dp)
                         ) {}
                         Text(
-                            text = "STEP-BY-STEP REPAIR INFOGRAPHS",
+                            text = if (activeToolOrBitFilter != null) {
+                                "FILTERED REPAIR STEPS (${displayedSteps.size})"
+                            } else {
+                                "STEP-BY-STEP REPAIR INFOGRAPHS"
+                            },
                             color = TextPrimary,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
@@ -176,8 +405,8 @@ fun ProcedureDetailScreen(
                 }
             }
 
-            // 5. Individual Step-by-Step Infograph Cards
-            itemsIndexed(procedure.steps, key = { _, step -> step.stepNumber }) { index, step ->
+            // 6. Individual Step-by-Step Infograph Cards
+            itemsIndexed(displayedSteps, key = { _, step -> step.stepNumber }) { _, step ->
                 val isCompleted = completedSteps.contains(step.stepNumber)
                 val relevantTorque = procedure.torqueSpecs.firstOrNull { spec ->
                     step.instructions.contains(spec.componentName, ignoreCase = true) ||
@@ -186,7 +415,7 @@ fun ProcedureDetailScreen(
 
                 StepInfographCard(
                     step = step,
-                    stepIndex = index + 1,
+                    stepIndex = step.stepNumber,
                     totalSteps = procedure.steps.size,
                     isCompleted = isCompleted,
                     matchedTorqueSpec = relevantTorque,
@@ -196,14 +425,382 @@ fun ProcedureDetailScreen(
                         } else {
                             completedSteps + step.stepNumber
                         }
+                    },
+                    onToolChipClick = { toolName ->
+                        val matched = allToolsAndBits.firstOrNull {
+                            it.name.contains(toolName, ignoreCase = true) || toolName.contains(it.name, ignoreCase = true)
+                        }
+                        if (matched != null) {
+                            activeToolOrBitFilter = if (activeToolOrBitFilter?.id == matched.id) null else matched
+                        }
                     }
                 )
             }
 
-            // 6. Final Completion Card
+            // 7. Final Completion Card
             if (procedure.steps.isNotEmpty() && completedSteps.size == procedure.steps.size) {
                 item {
                     ProcedureCompletedCard(onReset = { completedSteps = emptySet() })
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Dedicated Tools & Bits Filter Section.
+ * Displays an inventory checklist with categorization, real-time search,
+ * "In Tray" readiness tracking, and direct step-filtering triggers.
+ */
+@Composable
+fun ToolsAndBitsFilterSection(
+    toolsAndBits: List<ToolOrBit>,
+    activeFilter: ToolOrBit?,
+    onSelectFilter: (ToolOrBit?) -> Unit,
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
+    selectedCategory: ToolOrBitType,
+    onCategorySelect: (ToolOrBitType) -> Unit,
+    trayCheckedIds: Set<String>,
+    onToggleTrayItem: (String) -> Unit,
+    isExpanded: Boolean,
+    onToggleExpand: () -> Unit
+) {
+    Surface(
+        color = WorkshopSurface,
+        shape = RoundedCornerShape(14.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, WorkshopBorder),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            // Header: Title, Tray Progress & Expand/Collapse Toggle
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onToggleExpand() },
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Handyman,
+                        contentDescription = null,
+                        tint = CyanAccent,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Column {
+                        Text(
+                            text = "TOOLS & BITS NEEDED FILTER LIST",
+                            color = CyanAccent,
+                            fontSize = 11.5.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace,
+                            letterSpacing = 0.5.sp
+                        )
+                        Text(
+                            text = "${toolsAndBits.size} items required • ${trayCheckedIds.size}/${toolsAndBits.size} ready in tray",
+                            color = if (trayCheckedIds.size == toolsAndBits.size && toolsAndBits.isNotEmpty()) MintGreen else TextSecondary,
+                            fontSize = 10.5.sp,
+                            fontFamily = FontFamily.Monospace
+                        )
+                    }
+                }
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    if (activeFilter != null) {
+                        Surface(
+                            color = CyanAccent.copy(alpha = 0.2f),
+                            shape = RoundedCornerShape(10.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, CyanAccent)
+                        ) {
+                            Text(
+                                text = "1 FILTER ACTIVE",
+                                color = CyanAccent,
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = FontFamily.Monospace,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+
+                    Icon(
+                        imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                        contentDescription = null,
+                        tint = TextSecondary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+
+            if (isExpanded) {
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Search Bar for Tools & Bits
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = onSearchQueryChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = {
+                        Text(
+                            text = "Filter tools & bits (e.g. 15mm, Torx, bolt, pin)...",
+                            color = TextSecondary,
+                            fontSize = 12.sp
+                        )
+                    },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = "Search",
+                            tint = TextSecondary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    },
+                    trailingIcon = {
+                        if (searchQuery.isNotBlank()) {
+                            IconButton(onClick = { onSearchQueryChange("") }) {
+                                Icon(
+                                    imageVector = Icons.Default.Clear,
+                                    contentDescription = "Clear",
+                                    tint = TextSecondary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                    },
+                    singleLine = true,
+                    shape = RoundedCornerShape(10.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = WorkshopBackground,
+                        unfocusedContainerColor = WorkshopBackground,
+                        focusedBorderColor = CyanAccent,
+                        unfocusedBorderColor = WorkshopBorder,
+                        focusedTextColor = TextPrimary,
+                        unfocusedTextColor = TextPrimary
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Category Filter Chips Row
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    ToolOrBitType.values().forEach { cat ->
+                        val isSelected = selectedCategory == cat
+                        val count = if (cat == ToolOrBitType.ALL) {
+                            toolsAndBits.size
+                        } else {
+                            toolsAndBits.count { it.category == cat }
+                        }
+
+                        if (count > 0 || cat == ToolOrBitType.ALL) {
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = if (isSelected) CyanAccent else WorkshopSurfaceElevated,
+                                border = androidx.compose.foundation.BorderStroke(
+                                    width = 1.dp,
+                                    color = if (isSelected) CyanAccent else WorkshopBorder
+                                ),
+                                modifier = Modifier.clickable { onCategorySelect(cat) }
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = cat.icon,
+                                        contentDescription = null,
+                                        tint = if (isSelected) WorkshopBackground else TextSecondary,
+                                        modifier = Modifier.size(13.dp)
+                                    )
+                                    Text(
+                                        text = "${cat.label.uppercase()} ($count)",
+                                        color = if (isSelected) WorkshopBackground else TextSecondary,
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        fontFamily = FontFamily.Monospace
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Filtered List of Tools and Bits
+                val filteredItems = toolsAndBits.filter { item ->
+                    val matchesCategory = selectedCategory == ToolOrBitType.ALL || item.category == selectedCategory
+                    val matchesSearch = searchQuery.isBlank() ||
+                            item.name.contains(searchQuery, ignoreCase = true) ||
+                            item.spec.contains(searchQuery, ignoreCase = true) ||
+                            (item.oemPartNumber != null && item.oemPartNumber.contains(searchQuery, ignoreCase = true))
+                    matchesCategory && matchesSearch
+                }
+
+                if (filteredItems.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 14.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "No tools or bits match the active filter",
+                            color = TextSecondary,
+                            fontSize = 12.sp,
+                            fontFamily = FontFamily.Monospace
+                        )
+                    }
+                } else {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        filteredItems.forEach { item ->
+                            val isFilteringThis = activeFilter?.id == item.id
+                            val isInTray = trayCheckedIds.contains(item.id)
+
+                            Surface(
+                                color = if (isFilteringThis) CyanAccent.copy(alpha = 0.12f) else WorkshopBackground,
+                                shape = RoundedCornerShape(10.dp),
+                                border = androidx.compose.foundation.BorderStroke(
+                                    width = if (isFilteringThis) 1.5.dp else 1.dp,
+                                    color = if (isFilteringThis) CyanAccent else WorkshopBorder
+                                ),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(10.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    // Left: In-Tray Checkbox & Icon
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        IconButton(
+                                            onClick = { onToggleTrayItem(item.id) },
+                                            modifier = Modifier.size(28.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = if (isInTray) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
+                                                contentDescription = "In Tray",
+                                                tint = if (isInTray) MintGreen else TextSecondary,
+                                                modifier = Modifier.size(20.dp)
+                                            )
+                                        }
+
+                                        Column {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                            ) {
+                                                Text(
+                                                    text = item.name,
+                                                    color = if (isInTray) TextSecondary else TextPrimary,
+                                                    fontSize = 12.5.sp,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                                if (item.isCrucial) {
+                                                    Surface(
+                                                        color = CitroenRed.copy(alpha = 0.15f),
+                                                        shape = RoundedCornerShape(3.dp)
+                                                    ) {
+                                                        Text(
+                                                            text = "CRUCIAL",
+                                                            color = CitroenRed,
+                                                            fontSize = 8.5.sp,
+                                                            fontWeight = FontWeight.Bold,
+                                                            fontFamily = FontFamily.Monospace,
+                                                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                                        )
+                                                    }
+                                                }
+                                            }
+
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                            ) {
+                                                Text(
+                                                    text = "Spec: ${item.spec}",
+                                                    color = CyanAccent,
+                                                    fontSize = 11.sp,
+                                                    fontFamily = FontFamily.Monospace,
+                                                    fontWeight = FontWeight.Medium
+                                                )
+                                                if (item.torqueNm != null) {
+                                                    Surface(
+                                                        color = GoldenBolt.copy(alpha = 0.15f),
+                                                        shape = RoundedCornerShape(3.dp)
+                                                    ) {
+                                                        Text(
+                                                            text = "${item.torqueNm} Nm",
+                                                            color = GoldenBolt,
+                                                            fontSize = 9.sp,
+                                                            fontWeight = FontWeight.Bold,
+                                                            fontFamily = FontFamily.Monospace,
+                                                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                                        )
+                                                    }
+                                                }
+                                                if (item.stepNumbers.isNotEmpty()) {
+                                                    Text(
+                                                        text = "• Steps: ${item.stepNumbers.joinToString()}",
+                                                        color = TextSecondary,
+                                                        fontSize = 10.5.sp,
+                                                        fontFamily = FontFamily.Monospace
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    // Right: Step-Filter Trigger Button
+                                    Surface(
+                                        shape = RoundedCornerShape(6.dp),
+                                        color = if (isFilteringThis) CyanAccent else WorkshopSurfaceElevated,
+                                        border = androidx.compose.foundation.BorderStroke(
+                                            1.dp,
+                                            if (isFilteringThis) CyanAccent else WorkshopBorder
+                                        ),
+                                        modifier = Modifier.clickable { onSelectFilter(item) }
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = if (isFilteringThis) Icons.Default.FilterListOff else Icons.Default.FilterList,
+                                                contentDescription = null,
+                                                tint = if (isFilteringThis) WorkshopBackground else CyanAccent,
+                                                modifier = Modifier.size(12.dp)
+                                            )
+                                            Text(
+                                                text = if (isFilteringThis) "FILTERING" else "FILTER",
+                                                color = if (isFilteringThis) WorkshopBackground else CyanAccent,
+                                                fontSize = 9.5.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                fontFamily = FontFamily.Monospace
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -406,150 +1003,14 @@ private fun SafetyNotesBanner(
 }
 
 @Composable
-private fun ToolingAndTorqueSummaryCard(
-    tools: List<ToolRequirement>,
-    torqueSpecs: List<TorqueSpec>,
-    isExpanded: Boolean,
-    onToggle: () -> Unit
-) {
-    Surface(
-        color = WorkshopSurface,
-        shape = RoundedCornerShape(12.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, WorkshopBorder),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(modifier = Modifier.padding(14.dp)) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onToggle() },
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Build,
-                        contentDescription = null,
-                        tint = CyanAccent,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Text(
-                        text = "REQUIRED TOOLS & TORQUE SPECS",
-                        color = CyanAccent,
-                        fontSize = 11.5.sp,
-                        fontWeight = FontWeight.Bold,
-                        fontFamily = FontFamily.Monospace,
-                        letterSpacing = 0.5.sp
-                    )
-                }
-
-                Icon(
-                    imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                    contentDescription = null,
-                    tint = TextSecondary,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-
-            if (isExpanded) {
-                if (torqueSpecs.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(
-                        text = "CRITICAL FASTENER TORQUES",
-                        color = GoldenBolt,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        fontFamily = FontFamily.Monospace
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-                    torqueSpecs.forEach { spec ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = spec.componentName,
-                                    color = TextPrimary,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Medium
-                                )
-                                Text(
-                                    text = "Fastener: ${spec.fastenerSize} ${if (spec.notes.isNotEmpty()) "• ${spec.notes}" else ""}",
-                                    color = TextSecondary,
-                                    fontSize = 10.5.sp
-                                )
-                            }
-                            Surface(
-                                color = GoldenBolt.copy(alpha = 0.15f),
-                                shape = RoundedCornerShape(4.dp),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, GoldenBolt)
-                            ) {
-                                Text(
-                                    text = "${spec.torqueNm} Nm",
-                                    color = GoldenBolt,
-                                    fontSize = 11.5.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    fontFamily = FontFamily.Monospace,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                )
-                            }
-                        }
-                    }
-                }
-
-                if (tools.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(
-                        text = "TOOLBOX CHECKLIST",
-                        color = CyanAccent,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        fontFamily = FontFamily.Monospace
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-                    tools.forEach { tool ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 3.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Check,
-                                contentDescription = null,
-                                tint = CyanAccent,
-                                modifier = Modifier.size(14.dp)
-                            )
-                            Text(
-                                text = "${tool.name} — ${tool.size}",
-                                color = TextPrimary,
-                                fontSize = 11.5.sp,
-                                fontFamily = FontFamily.Monospace
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
 private fun StepInfographCard(
     step: DisassemblyStep,
     stepIndex: Int,
     totalSteps: Int,
     isCompleted: Boolean,
     matchedTorqueSpec: TorqueSpec?,
-    onToggleComplete: () -> Unit
+    onToggleComplete: () -> Unit,
+    onToolChipClick: (String) -> Unit
 ) {
     Surface(
         color = if (isCompleted) WorkshopSurface.copy(alpha = 0.65f) else WorkshopSurface,
@@ -741,7 +1202,8 @@ private fun StepInfographCard(
                         Surface(
                             color = WorkshopSurfaceElevated,
                             shape = RoundedCornerShape(6.dp),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, WorkshopBorder)
+                            border = androidx.compose.foundation.BorderStroke(1.dp, CyanAccent.copy(alpha = 0.6f)),
+                            modifier = Modifier.clickable { onToolChipClick(step.tool.name) }
                         ) {
                             Row(
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
@@ -759,6 +1221,12 @@ private fun StepInfographCard(
                                     color = TextPrimary,
                                     fontSize = 11.sp,
                                     fontFamily = FontFamily.Monospace
+                                )
+                                Icon(
+                                    imageVector = Icons.Default.FilterList,
+                                    contentDescription = "Filter",
+                                    tint = CyanAccent,
+                                    modifier = Modifier.size(11.dp)
                                 )
                             }
                         }
@@ -799,12 +1267,6 @@ private fun StepInfographCard(
 
 /**
  * Technical Infograph Canvas dedicated to the action of each step.
- * Renders technical vector diagrams tailored to DV6/Picasso operations:
- * - Battery / BSI sleep countdown & terminal isolation
- * - Serpentine belt path & tensioner rotation with locking pin
- * - Wiring harness & connector extraction
- * - Fastener loosening / torque sequences
- * - Extraction vector past wheel arch / subframe
  */
 @Composable
 private fun StepTechnicalInfograph(
@@ -846,7 +1308,7 @@ private fun StepTechnicalInfograph(
                 y += gridSpacing
             }
 
-            // Draw Step Specific Technical Schematics based on graphicKey or step number
+            // Draw Step Specific Technical Schematics
             val effectiveStepId = when {
                 step.graphicKey.isNotEmpty() -> step.graphicKey
                 else -> "step_$stepNumber"
@@ -855,7 +1317,6 @@ private fun StepTechnicalInfograph(
             when (if (effectiveStepId.startsWith("step_")) stepNumber else stepNumber) {
                 1 -> {
                     // STEP 1: Battery Disconnect & BSI 3-Minute Sleep
-                    // Battery Body
                     drawRoundRect(
                         color = Color(0xFF1E293B),
                         topLeft = Offset(40f, 30f),
@@ -869,11 +1330,9 @@ private fun StepTechnicalInfograph(
                         cornerRadius = CornerRadius(6f, 6f),
                         style = Stroke(width = 2f)
                     )
-                    // Terminals (+ and -)
                     drawRect(color = CitroenRed, topLeft = Offset(52f, 20f), size = Size(16f, 10f))
                     drawRect(color = Color(0xFF94A3B8), topLeft = Offset(118f, 20f), size = Size(16f, 10f))
 
-                    // Negative Terminal Disconnect Arrow (Up and away)
                     val arrowPath = Path().apply {
                         moveTo(126f, 15f)
                         lineTo(126f, -5f)
@@ -887,10 +1346,8 @@ private fun StepTechnicalInfograph(
                             pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 4f))
                         )
                     )
-                    // Arrowhead
                     drawCircle(color = CoralAlert, radius = 4f, center = Offset(150f, -5f))
 
-                    // BSI 3-Minute Clock Timer Diagram
                     val clockCenter = Offset(canvasWidth - 90f, canvasHeight / 2)
                     drawCircle(
                         color = Color(0xFF0F172A),
@@ -903,7 +1360,6 @@ private fun StepTechnicalInfograph(
                         center = clockCenter,
                         style = Stroke(width = 2.5f)
                     )
-                    // Hands at 3 minutes
                     drawLine(
                         color = Color.White,
                         start = clockCenter,
@@ -925,7 +1381,6 @@ private fun StepTechnicalInfograph(
                     val tensionerCenter = Offset(canvasWidth / 2 + 20f, canvasHeight / 2 + 20f)
                     val acCenter = Offset(canvasWidth - 70f, canvasHeight / 2)
 
-                    // Pulleys
                     drawCircle(color = Color(0xFF334155), radius = 26f, center = crankCenter)
                     drawCircle(color = CyanAccent, radius = 26f, center = crankCenter, style = Stroke(2f))
 
@@ -938,7 +1393,6 @@ private fun StepTechnicalInfograph(
                     drawCircle(color = Color(0xFF334155), radius = 22f, center = acCenter)
                     drawCircle(color = CyanAccent, radius = 22f, center = acCenter, style = Stroke(2f))
 
-                    // Serpentine Belt Path
                     val beltPath = Path().apply {
                         moveTo(crankCenter.x, crankCenter.y - 26f)
                         lineTo(altCenter.x - 20f, altCenter.y)
@@ -954,7 +1408,6 @@ private fun StepTechnicalInfograph(
                         style = Stroke(width = 3.5f)
                     )
 
-                    // Tensioner rotation vector & 4mm pin hole
                     drawCircle(color = Color.White, radius = 4f, center = tensionerCenter)
                     val rotArrow = Path().apply {
                         moveTo(tensionerCenter.x + 22f, tensionerCenter.y - 12f)
@@ -965,7 +1418,6 @@ private fun StepTechnicalInfograph(
 
                 3 -> {
                     // STEP 3: Electrical Connections (B+ 13mm Nut & 2-Pin Excitation Plug)
-                    // Alternator Rear Housing Outline
                     drawRoundRect(
                         color = Color(0xFF1E293B),
                         topLeft = Offset(50f, 25f),
@@ -980,11 +1432,9 @@ private fun StepTechnicalInfograph(
                         style = Stroke(width = 2f)
                     )
 
-                    // B+ Stud (Copper Hex Nut)
                     val bPlusCenter = Offset(110f, 65f)
                     drawCircle(color = GoldenBolt, radius = 14f, center = bPlusCenter)
                     drawCircle(color = Color.Black, radius = 6f, center = bPlusCenter)
-                    // Loosening Direction Arrow (counter-clockwise)
                     drawCircle(
                         color = CoralAlert,
                         radius = 20f,
@@ -995,7 +1445,6 @@ private fun StepTechnicalInfograph(
                         )
                     )
 
-                    // 2-Pin Signal Connector (Excitation plug)
                     val plugRect = Offset(canvasWidth - 140f, 48f)
                     drawRoundRect(
                         color = MintGreen,
@@ -1003,7 +1452,6 @@ private fun StepTechnicalInfograph(
                         size = Size(45f, 34f),
                         cornerRadius = CornerRadius(4f, 4f)
                     )
-                    // Unclip arrow
                     val unclipPath = Path().apply {
                         moveTo(plugRect.x + 22f, plugRect.y - 4f)
                         lineTo(plugRect.x + 22f, plugRect.y - 18f)
@@ -1013,7 +1461,6 @@ private fun StepTechnicalInfograph(
 
                 4 -> {
                     // STEP 4: Upper Mounting Bolts (Dual 13mm Hex)
-                    // Engine Bracket Lugs
                     drawRoundRect(
                         color = Color(0xFF1E293B),
                         topLeft = Offset(60f, 30f),
@@ -1028,17 +1475,14 @@ private fun StepTechnicalInfograph(
                         style = Stroke(2f)
                     )
 
-                    // Upper Bolt 1
                     val bolt1Center = Offset(120f, 65f)
                     drawCircle(color = GoldenBolt, radius = 12f, center = bolt1Center)
                     drawCircle(color = Color.Black, radius = 5f, center = bolt1Center)
 
-                    // Upper Bolt 2
                     val bolt2Center = Offset(canvasWidth - 120f, 65f)
                     drawCircle(color = GoldenBolt, radius = 12f, center = bolt2Center)
                     drawCircle(color = Color.Black, radius = 5f, center = bolt2Center)
 
-                    // Unthreading arrows
                     drawLine(
                         color = CyanAccent,
                         start = bolt1Center,
@@ -1055,7 +1499,6 @@ private fun StepTechnicalInfograph(
 
                 5 -> {
                     // STEP 5: Lower Pivot Bolt & Extraction Path
-                    // Alternator Silhouette
                     drawCircle(
                         color = Color(0xFF1E293B),
                         radius = 35f,
@@ -1068,7 +1511,6 @@ private fun StepTechnicalInfograph(
                         style = Stroke(2f)
                     )
 
-                    // Long Pivot Bolt Shaft
                     drawLine(
                         color = GoldenBolt,
                         start = Offset(90f, 85f),
@@ -1077,7 +1519,6 @@ private fun StepTechnicalInfograph(
                     )
                     drawCircle(color = GoldenBolt, radius = 8f, center = Offset(90f, 125f))
 
-                    // Extraction Trajectory Curve (downward past wheel arch)
                     val trajPath = Path().apply {
                         moveTo(130f, 50f)
                         cubicTo(190f, 50f, 220f, 95f, canvasWidth - 60f, 100f)
@@ -1090,12 +1531,11 @@ private fun StepTechnicalInfograph(
                             pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 5f))
                         )
                     )
-                    // Arrowhead at exit
                     drawCircle(color = MintGreen, radius = 5f, center = Offset(canvasWidth - 60f, 100f))
                 }
 
                 else -> {
-                    // Generic Infograph: Blueprint Action Schematic
+                    // Generic Blueprint Action Schematic
                     val center = Offset(canvasWidth / 2, canvasHeight / 2)
                     drawCircle(
                         color = Color(0xFF1E293B),
@@ -1108,7 +1548,6 @@ private fun StepTechnicalInfograph(
                         center = center,
                         style = Stroke(2f)
                     )
-                    // Fastener Crosshair
                     drawLine(
                         color = BlueprintGrid,
                         start = Offset(center.x - 50f, center.y),

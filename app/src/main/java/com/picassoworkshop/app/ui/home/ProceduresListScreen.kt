@@ -53,21 +53,33 @@ fun ProceduresListScreen(
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf("ALL") }
+    var selectedToolFilter by remember { mutableStateOf<String?>(null) }
 
     val categories = remember(procedures) {
         listOf("ALL") + procedures.map { it.category.title }.distinct()
     }
 
-    val filteredProcedures = remember(procedures, searchQuery, selectedCategory) {
+    val popularTools = remember(procedures) {
+        listOf("ALL TOOLS", "15mm Spanner", "13mm Socket", "10mm Socket", "Torx T20", "4mm Pin", "Multimeter")
+    }
+
+    val filteredProcedures = remember(procedures, searchQuery, selectedCategory, selectedToolFilter) {
         procedures.filter { proc ->
             val matchesCategory = selectedCategory == "ALL" || proc.category.title.equals(selectedCategory, ignoreCase = true)
             val matchesSearch = if (searchQuery.isBlank()) true else {
                 proc.title.contains(searchQuery, ignoreCase = true) ||
                         proc.summary.contains(searchQuery, ignoreCase = true) ||
                         proc.category.title.contains(searchQuery, ignoreCase = true) ||
-                        proc.explodedParts.any { it.name.contains(searchQuery, ignoreCase = true) }
+                        proc.toolsNeeded.any { it.name.contains(searchQuery, ignoreCase = true) || it.size.contains(searchQuery, ignoreCase = true) } ||
+                        proc.torqueSpecs.any { it.fastenerSize.contains(searchQuery, ignoreCase = true) || it.componentName.contains(searchQuery, ignoreCase = true) } ||
+                        proc.explodedParts.any { it.name.contains(searchQuery, ignoreCase = true) || it.fastenerType.contains(searchQuery, ignoreCase = true) }
             }
-            matchesCategory && matchesSearch
+            val matchesTool = selectedToolFilter == null || selectedToolFilter == "ALL TOOLS" || {
+                val filterKey = selectedToolFilter!!.replace(" Spanner", "").replace(" Socket", "")
+                proc.toolsNeeded.any { it.size.contains(filterKey, ignoreCase = true) || it.name.contains(filterKey, ignoreCase = true) } ||
+                        proc.explodedParts.any { it.fastenerType.contains(filterKey, ignoreCase = true) }
+            }()
+            matchesCategory && matchesSearch && matchesTool
         }
     }
 
@@ -263,6 +275,64 @@ fun ProceduresListScreen(
                                     fontWeight = FontWeight.Bold,
                                     fontFamily = FontFamily.Monospace,
                                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    // Tools & Bits Quick Filter Row
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            color = BlueprintGrid.copy(alpha = 0.35f),
+                            shape = RoundedCornerShape(6.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Build,
+                                    contentDescription = null,
+                                    tint = CyanAccent,
+                                    modifier = Modifier.size(11.dp)
+                                )
+                                Text(
+                                    text = "TOOL:",
+                                    color = CyanAccent,
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = FontFamily.Monospace
+                                )
+                            }
+                        }
+
+                        popularTools.forEach { toolLabel ->
+                            val isSelected = (selectedToolFilter == null && toolLabel == "ALL TOOLS") || selectedToolFilter == toolLabel
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = if (isSelected) CyanAccent else WorkshopSurfaceElevated,
+                                border = androidx.compose.foundation.BorderStroke(
+                                    width = 1.dp,
+                                    color = if (isSelected) CyanAccent else WorkshopBorder
+                                ),
+                                modifier = Modifier.clickable {
+                                    selectedToolFilter = if (toolLabel == "ALL TOOLS") null else toolLabel
+                                }
+                            ) {
+                                Text(
+                                    text = toolLabel.uppercase(),
+                                    color = if (isSelected) WorkshopBackground else TextSecondary,
+                                    fontSize = 9.5.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = FontFamily.Monospace,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                                 )
                             }
                         }
