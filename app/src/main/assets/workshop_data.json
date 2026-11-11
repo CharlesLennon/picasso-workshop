@@ -1,0 +1,568 @@
+{
+  "schemaVersion": 1,
+  "dataVersion": "20261111_01",
+  "releaseDate": "2026-11-11",
+  "title": "Citroën C4 Grand Picasso Technical Workshop Dataset",
+  "quickTorqueLookup": {
+    "Alternator Lower Pivot Bolt (1.6 HDi)": 40.0,
+    "Alternator Upper Mounting Bolts (1.6 HDi)": 40.0,
+    "Alternator B+ 12V Cable Nut": 15.0,
+    "Auxiliary Drive Belt Dynamic Tensioner": 25.0,
+    "Starter Motor Mounting Bolts (3x)": 35.0,
+    "Wheel Lug Bolts (Alloy/Steel)": 100.0,
+    "Oil Sump Drain Plug (DV6 Copper Washer)": 25.0,
+    "Fuel Filter Bleed Screw": 3.0,
+    "EGR Valve Flange Bolts": 10.0,
+    "Turbo Oil Feed Banjo Bolt (Engine Block)": 30.0,
+    "Turbo Oil Feed Banjo Bolt (Turbo Inflow)": 25.0
+  },
+  "procedures": [
+    {
+      "id": "dv6_alternator_removal",
+      "title": "Alternator Removal & Auxiliary Drive Servicing",
+      "targetGeneration": "MK1_B58",
+      "targetEngine": "DV6_16_HDI",
+      "category": "AUXILIARY_DRIVE",
+      "difficulty": "ADVANCED",
+      "estimatedMinutes": 120,
+      "summary": "Step-by-step complete removal of the 150A alternator on the PSA 1.6 HDi (DV6TED4/DV6C) engine. Details auxiliary drive de-tensioning, power steering pump relocation without hydraulic disconnection, bolt sequencing, and extraction angles past the front wheel arch.",
+      "safetyNotes": [
+        "DISCONNECT NEGATIVE BATTERY TERMINAL: The B+ lead to the alternator carries unfused direct battery voltage.",
+        "BSI SLEEP PROTOCOL: Open bonnet, close all vehicle doors, remove ignition key, and wait a strict minimum of 3 minutes before unhooking the battery clamp.",
+        "AXLE STANDS MANDATORY: Never work under the vehicle supported only by a hydraulic floor jack."
+      ],
+      "toolsNeeded": [
+        {
+          "name": "Offset Ring Spanner (Tensioner De-tensioning)",
+          "size": "15mm",
+          "category": "WRENCH",
+          "isCrucial": true
+        },
+        {
+          "name": "Tensioner Locking Pin / Allen Key",
+          "size": "4mm (or 4.5mm drill bit)",
+          "category": "SPECIAL_PIN",
+          "isCrucial": true
+        },
+        {
+          "name": "3/8\" Drive Deep & Shallow Socket",
+          "size": "13mm",
+          "category": "SOCKET",
+          "isCrucial": true
+        },
+        {
+          "name": "1/4\" Drive Socket (Arch Liner & Undertray)",
+          "size": "10mm",
+          "category": "SOCKET",
+          "isCrucial": true
+        },
+        {
+          "name": "Torx Screwdriver / Bit",
+          "size": "T20 & T30",
+          "category": "TORX",
+          "isCrucial": true
+        },
+        {
+          "name": "Plastic Trim & Clip Removal Pry Bar",
+          "size": "Standard",
+          "category": "HAND_TOOL",
+          "isCrucial": false
+        },
+        {
+          "name": "Calibrated Torque Wrench",
+          "size": "10–60 Nm",
+          "category": "HAND_TOOL",
+          "isCrucial": true
+        }
+      ],
+      "torqueSpecs": [
+        {
+          "componentName": "Alternator Lower Pivot Bolt (M10)",
+          "torqueNm": 40.0,
+          "fastenerSize": "13mm Hex",
+          "notes": "Thread threadlocker (blue) recommended on reassembly."
+        },
+        {
+          "componentName": "Alternator Upper Mounting Bolts (2x M10)",
+          "torqueNm": 40.0,
+          "fastenerSize": "13mm Hex",
+          "notes": "Torque progressively to maintain bracket alignment."
+        },
+        {
+          "componentName": "B+ Battery Positive Terminal Nut (M8)",
+          "torqueNm": 15.0,
+          "fastenerSize": "13mm Hex Nut",
+          "notes": "Do not overtighten to avoid cracking alternator diode bridge insulator."
+        },
+        {
+          "componentName": "Dynamic Belt Tensioner Pivot Bolt",
+          "torqueNm": 25.0,
+          "fastenerSize": "13mm Hex Bolt",
+          "notes": "Ensure locating lug is seated in engine casing recess."
+        },
+        {
+          "componentName": "Road Wheel Lug Bolts",
+          "torqueNm": 100.0,
+          "fastenerSize": "17mm or 19mm Hex",
+          "notes": "Cross-pattern sequence on ground."
+        }
+      ],
+      "steps": [
+        {
+          "stepNumber": 1,
+          "title": "BSI Sleep Protocol & Battery Disconnection",
+          "instructions": "Park vehicle on level ground. Open the bonnet. Roll down driver window (prevents lockout). Turn ignition off, remove key, and ensure all doors remain closed. Wait at least 3 minutes to allow the Body System Interface (BSI) to write adaptive memory and enter deep sleep. Release the quick-release negative battery terminal clamp and stow the cable safely away from the battery post.",
+          "warning": "Prematurely disconnecting the battery can corrupt BSI configuration and immobilizer data.",
+          "caution": "The alternator B+ cable carries live battery current if the terminal is not disconnected.",
+          "tool": {
+            "name": "Quick Release Lever (Hand Operated)",
+            "size": "No tool needed",
+            "category": "HAND_TOOL",
+            "isCrucial": true
+          },
+          "calloutNumber": 8,
+          "graphicKey": "battery_bsi"
+        },
+        {
+          "stepNumber": 2,
+          "title": "Front Right Wheel & Arch Splash Guard Removal",
+          "instructions": "Loosen front right wheel bolts slightly. Jack up the right front corner at the reinforced sill jacking notch. Secure vehicle firmly onto an axle stand. Remove wheel. Remove the plastic expanding push-rivets and 10mm screws securing the front half of the wheel arch inner plastic liner. Fold back or remove the liner to expose the lower crankshaft pulley and auxiliary belt run.",
+          "tool": {
+            "name": "Wheel Socket & Clip Pry Tool",
+            "size": "17mm / Trim Tool",
+            "category": "SOCKET",
+            "isCrucial": true
+          },
+          "calloutNumber": 6,
+          "graphicKey": "wheel_arch"
+        },
+        {
+          "stepNumber": 3,
+          "title": "Engine Undertray Removal",
+          "instructions": "Underneath the front bumper, remove the 10mm perimeter hex bolts and T20 Torx fasteners holding the lower acoustic engine tray. Slide the tray backward and unhook from the front subframe lip.",
+          "tool": {
+            "name": "Hex Socket & Torx Bit",
+            "size": "10mm Hex & T20",
+            "category": "SOCKET",
+            "isCrucial": true
+          },
+          "calloutNumber": 6,
+          "graphicKey": "undertray"
+        },
+        {
+          "stepNumber": 4,
+          "title": "Auxiliary Drive Belt De-Tensioning & Removal",
+          "instructions": "Locate the dynamic belt tensioner (between crankshaft pulley and alternator). Fit a 15mm offset ring spanner onto the central hex head of the tensioner roller. Pull the spanner firmly clockwise (towards front of car) against spring tension until the 4mm locking hole aligns with the engine block recess. Insert a 4mm pin or hex key into the locking hole. Slip the 6PK1070 ribbed belt off the alternator and crankshaft pulleys.",
+          "caution": "Inspect the belt for cracking and inspect the alternator overrunning freewheel clutch (it should rotate freely in one direction and lock in the other).",
+          "tool": {
+            "name": "Offset Ring Spanner & Locking Pin",
+            "size": "15mm & 4mm Pin",
+            "category": "WRENCH",
+            "isCrucial": true
+          },
+          "calloutNumber": 5,
+          "associatedPartId": "part_tensioner",
+          "graphicKey": "tensioner_release"
+        },
+        {
+          "stepNumber": 5,
+          "title": "Power Steering Pump Reservoir Relocation",
+          "instructions": "On Mk1 1.6 HDi models with power steering reservoir/bracket mounted in the upper right bay, remove the 2x 10mm retaining bolts. Gently lift and tilt the reservoir aside and secure with a bungee cord. DO NOT disconnect the hydraulic hoses.",
+          "tool": {
+            "name": "Socket & Extension",
+            "size": "10mm Hex",
+            "category": "SOCKET",
+            "isCrucial": true
+          },
+          "calloutNumber": 10,
+          "associatedPartId": "part_ps_bracket",
+          "graphicKey": "ps_pump"
+        },
+        {
+          "stepNumber": 6,
+          "title": "Alternator Electrical Disconnections",
+          "instructions": "Reach behind the rear plastic casing of the alternator. Squeeze the locking tab on the 2-pin excitation/LIN communication wiring harness plug and pull straight out. Flip back the protective rubber boot on the B+ positive stud. Use a 13mm socket to unthread the M8 retaining nut and slide off the heavy copper power terminal cable.",
+          "caution": "Protect the ring terminal with insulating tape to prevent accidental shorting on chassis metal.",
+          "tool": {
+            "name": "Deep Socket",
+            "size": "13mm Hex",
+            "category": "SOCKET",
+            "isCrucial": true
+          },
+          "calloutNumber": 8,
+          "associatedPartId": "part_b_plus",
+          "graphicKey": "wiring_harness"
+        },
+        {
+          "stepNumber": 7,
+          "title": "Alternator Mounting Bolts Removal",
+          "instructions": "Using a 13mm socket with extension, loosen and remove the two upper M10 mounting bolts (front and rear). Then, through the lower wheel arch opening, loosen and extract the long lower M10 pivot bolt. Gently rock the alternator on its dowels with a small pry bar to free it from the aluminum bracket sleeves.",
+          "tool": {
+            "name": "Socket & Ratchet",
+            "size": "13mm Hex",
+            "category": "SOCKET",
+            "isCrucial": true
+          },
+          "calloutNumber": 2,
+          "associatedPartId": "part_pivot_bolt",
+          "graphicKey": "mounting_bolts"
+        },
+        {
+          "stepNumber": 8,
+          "title": "Extraction & Reassembly Torque Specifications",
+          "instructions": "Maneuver the alternator downward and outward through the space between the subframe, right wheel arch inner edge, and lower radiator hose. On installation: slide new alternator into mounting lugs; finger-tighten lower pivot bolt first, followed by upper bolts. Torque lower and upper mounting bolts to 40 Nm. Torque B+ nut to 15 Nm. Refit auxiliary belt according to the serpentine routing schematic. Rotate tensioner to release the 4mm locking pin. Reconnect battery and let vehicle idle for 2 minutes before testing charge voltage (target: 14.1V - 14.4V).",
+          "tool": {
+            "name": "Torque Wrench & Multimeter",
+            "size": "10–50 Nm / DC Volts",
+            "category": "HAND_TOOL",
+            "isCrucial": true
+          },
+          "calloutNumber": 1,
+          "associatedPartId": "part_alternator",
+          "graphicKey": "extraction"
+        }
+      ],
+      "explodedParts": [
+        {
+          "id": "part_alternator",
+          "calloutNumber": 1,
+          "name": "150A Alternator Assembly",
+          "oemPartNumber": "5705.AS / 9656956180",
+          "fastenerType": "3x M10 Flanged Hex Bolts",
+          "torqueNm": 40.0,
+          "assemblyX": 250.0,
+          "assemblyY": 260.0,
+          "explodedX": 250.0,
+          "explodedY": 260.0,
+          "explodeDirX": 0.0,
+          "explodeDirY": 0.0,
+          "explodeDirZ": 0.0,
+          "explodeDistance": 0.0,
+          "meshShape": "CYLINDER",
+          "width": 64.0,
+          "height": 58.0,
+          "depth": 58.0,
+          "colorHex": "#38BDF8",
+          "description": "Primary charging alternator (Valeo TG15C028 / TG15C053 or Mitsubishi). Generates 150A @ 14V for dual-zone climate and B58 electronics."
+        },
+        {
+          "id": "part_pivot_bolt",
+          "calloutNumber": 2,
+          "name": "Lower Pivot Mounting Bolt",
+          "oemPartNumber": "5703.A7",
+          "fastenerType": "M10 x 95mm Hex Bolt",
+          "torqueNm": 40.0,
+          "assemblyX": 210.0,
+          "assemblyY": 310.0,
+          "explodedX": 110.0,
+          "explodedY": 370.0,
+          "explodeDirX": -1.2,
+          "explodeDirY": 0.8,
+          "explodeDirZ": -0.4,
+          "explodeDistance": 1.2,
+          "meshShape": "BOLT",
+          "width": 14.0,
+          "height": 14.0,
+          "depth": 45.0,
+          "colorHex": "#FACC15",
+          "description": "Lower pivot bolt passing through alternator lower mounting boss into engine accessory bracket. 13mm socket."
+        },
+        {
+          "id": "part_upper_front_bolt",
+          "calloutNumber": 3,
+          "name": "Upper Front Mounting Bolt",
+          "oemPartNumber": "5703.A8",
+          "fastenerType": "M10 x 60mm Hex Bolt",
+          "torqueNm": 40.0,
+          "assemblyX": 220.0,
+          "assemblyY": 220.0,
+          "explodedX": 130.0,
+          "explodedY": 150.0,
+          "explodeDirX": -1.0,
+          "explodeDirY": -0.9,
+          "explodeDirZ": -0.3,
+          "explodeDistance": 1.0,
+          "meshShape": "BOLT",
+          "width": 14.0,
+          "height": 14.0,
+          "depth": 35.0,
+          "colorHex": "#FACC15",
+          "description": "Upper forward mounting bolt. Accessible from top engine bay."
+        },
+        {
+          "id": "part_upper_rear_bolt",
+          "calloutNumber": 4,
+          "name": "Upper Rear Mounting Bolt",
+          "oemPartNumber": "5703.A9",
+          "fastenerType": "M10 x 60mm Hex Bolt",
+          "torqueNm": 40.0,
+          "assemblyX": 290.0,
+          "assemblyY": 210.0,
+          "explodedX": 360.0,
+          "explodedY": 130.0,
+          "explodeDirX": 0.8,
+          "explodeDirY": -1.1,
+          "explodeDirZ": -0.2,
+          "explodeDistance": 1.1,
+          "meshShape": "BOLT",
+          "width": 14.0,
+          "height": 14.0,
+          "depth": 35.0,
+          "colorHex": "#FACC15",
+          "description": "Upper rear mounting bolt located underneath fuel line harness."
+        },
+        {
+          "id": "part_tensioner",
+          "calloutNumber": 5,
+          "name": "Dynamic Auxiliary Belt Tensioner",
+          "oemPartNumber": "5751.G9 / 9653755480",
+          "fastenerType": "1x M10 Central Pivot Bolt (13mm)",
+          "torqueNm": 25.0,
+          "assemblyX": 170.0,
+          "assemblyY": 250.0,
+          "explodedX": 70.0,
+          "explodedY": 230.0,
+          "explodeDirX": -1.4,
+          "explodeDirY": -0.2,
+          "explodeDirZ": 0.3,
+          "explodeDistance": 1.3,
+          "meshShape": "PULLEY",
+          "width": 38.0,
+          "height": 38.0,
+          "depth": 24.0,
+          "colorHex": "#FB923C",
+          "description": "Spring-loaded dynamic tensioner roller with 15mm de-tensioning nut and 4mm locking pin hole."
+        },
+        {
+          "id": "part_belt",
+          "calloutNumber": 6,
+          "name": "Poly-V Auxiliary Drive Belt (6PK1070)",
+          "oemPartNumber": "5750.RG / 6PK1070",
+          "fastenerType": "Tensioned Ribbon Belt",
+          "torqueNm": null,
+          "assemblyX": 210.0,
+          "assemblyY": 250.0,
+          "explodedX": 200.0,
+          "explodedY": 80.0,
+          "explodeDirX": 0.0,
+          "explodeDirY": -1.8,
+          "explodeDirZ": 0.5,
+          "explodeDistance": 1.6,
+          "meshShape": "BELT",
+          "width": 90.0,
+          "height": 70.0,
+          "depth": 12.0,
+          "colorHex": "#4ADE80",
+          "description": "6-rib drive belt routing crankshaft damper pulley, alternator freewheel, dynamic tensioner, and A/C compressor."
+        },
+        {
+          "id": "part_pulley_clutch",
+          "calloutNumber": 7,
+          "name": "Overrunning Alternator Pulley (OAP)",
+          "oemPartNumber": "5705.EA / 9652438980",
+          "fastenerType": "Splined Shaft Nut (INA / Gates)",
+          "torqueNm": 80.0,
+          "assemblyX": 250.0,
+          "assemblyY": 235.0,
+          "explodedX": 250.0,
+          "explodedY": 160.0,
+          "explodeDirX": 0.0,
+          "explodeDirY": -1.3,
+          "explodeDirZ": 0.7,
+          "explodeDistance": 1.0,
+          "meshShape": "PULLEY",
+          "width": 32.0,
+          "height": 32.0,
+          "depth": 22.0,
+          "colorHex": "#818CF8",
+          "description": "One-way sprag clutch pulley damping cyclic crankshaft vibrations on the 1.6 diesel."
+        },
+        {
+          "id": "part_b_plus",
+          "calloutNumber": 8,
+          "name": "B+ Positive Battery Terminal Nut & Lead",
+          "oemPartNumber": "5704.14",
+          "fastenerType": "M8 Flanged Nut (13mm Hex)",
+          "torqueNm": 15.0,
+          "assemblyX": 305.0,
+          "assemblyY": 280.0,
+          "explodedX": 420.0,
+          "explodedY": 310.0,
+          "explodeDirX": 1.4,
+          "explodeDirY": 0.4,
+          "explodeDirZ": 0.2,
+          "explodeDistance": 1.2,
+          "meshShape": "BOLT",
+          "width": 16.0,
+          "height": 16.0,
+          "depth": 20.0,
+          "colorHex": "#EF4444",
+          "description": "Heavy gauge un-fused cable feeding charging output back into the engine bay battery fusebox (PSF1)."
+        },
+        {
+          "id": "part_lin_plug",
+          "calloutNumber": 9,
+          "name": "2-Pin Excitation / LIN Bus Harness Connector",
+          "oemPartNumber": "6541.E8",
+          "fastenerType": "Plastic Spring Clip Push-Fit",
+          "torqueNm": null,
+          "assemblyX": 310.0,
+          "assemblyY": 250.0,
+          "explodedX": 430.0,
+          "explodedY": 220.0,
+          "explodeDirX": 1.5,
+          "explodeDirY": -0.3,
+          "explodeDirZ": 0.3,
+          "explodeDistance": 1.3,
+          "meshShape": "BOX",
+          "width": 20.0,
+          "height": 16.0,
+          "depth": 18.0,
+          "colorHex": "#A855F7",
+          "description": "Communicates with Engine Control Module (BOSCH EDC16C34 / EDC17) for smart charging control."
+        },
+        {
+          "id": "part_ps_bracket",
+          "calloutNumber": 10,
+          "name": "Power Steering Reservoir Bracket",
+          "oemPartNumber": "4020.N2",
+          "fastenerType": "2x M6 Bolts (10mm Hex)",
+          "torqueNm": 10.0,
+          "assemblyX": 280.0,
+          "assemblyY": 170.0,
+          "explodedX": 340.0,
+          "explodedY": 60.0,
+          "explodeDirX": 0.7,
+          "explodeDirY": -1.5,
+          "explodeDirZ": 0.2,
+          "explodeDistance": 1.4,
+          "meshShape": "BRACKET",
+          "width": 46.0,
+          "height": 24.0,
+          "depth": 20.0,
+          "colorHex": "#94A3B8",
+          "description": "Support bracket holding electro-hydraulic power steering reservoir; unbolted and moved aside during removal."
+        }
+      ]
+    },
+    {
+      "id": "dv6_fuel_filter_replacement",
+      "title": "Fuel Filter Replacement & Hand Primer Bleeding",
+      "targetGeneration": "MK1_B58",
+      "targetEngine": "DV6_16_HDI",
+      "category": "FUEL_AND_INTAKE",
+      "difficulty": "BEGINNER",
+      "estimatedMinutes": 45,
+      "summary": "Replacement of the metal canister fuel filter on top of the DV6 engine. Explains push-fit fuel line union release, water-in-fuel sensor swap, and manual priming using the integrated rubber primer bulb.",
+      "safetyNotes": [
+        "FIRE SAFETY: Place lint-free shop rags beneath unions to catch diesel spills.",
+        "AIR BLEED MANDATORY: The common-rail high-pressure pump (Bosch CP1H) is lubricated solely by diesel; never crank an unprimed dry system."
+      ],
+      "toolsNeeded": [
+        {
+          "name": "Flat Blade Screwdriver & Trim Tool",
+          "size": "4mm",
+          "category": "HAND_TOOL",
+          "isCrucial": true
+        },
+        {
+          "name": "Torx Screwdriver",
+          "size": "T20",
+          "category": "TORX",
+          "isCrucial": true
+        }
+      ],
+      "torqueSpecs": [
+        {
+          "componentName": "Water Drain Valve",
+          "torqueNm": 2.5,
+          "fastenerSize": "Hand tight",
+          "notes": "Snug only to prevent cracking plastic body."
+        }
+      ],
+      "steps": [
+        {
+          "stepNumber": 1,
+          "title": "Acoustic Engine Cover Removal",
+          "instructions": "Pull upward on the four rubber ball mounts of the plastic engine top cover to release it.",
+          "graphicKey": "engine_cover"
+        },
+        {
+          "stepNumber": 2,
+          "title": "Fuel Line Quick-Release Unions",
+          "instructions": "Squeeze the white/green plastic side tabs on the fuel inlet and outlet quick-connect couplings and slide off cleanly.",
+          "graphicKey": "fuel_unions"
+        },
+        {
+          "stepNumber": 3,
+          "title": "Filter Bracket & Sensor Transfer",
+          "instructions": "Unhook the electric fuel heater harness plug and remove the canister from its mounting bracket. Transfer water sensor to new filter.",
+          "graphicKey": "filter_swap"
+        },
+        {
+          "stepNumber": 4,
+          "title": "Priming Bulb Operation",
+          "instructions": "Reconnect fuel lines. Repeatedly squeeze the rubber hand primer bulb located on the top left of the engine until firm resistance is felt. Start engine and check for leaks.",
+          "graphicKey": "primer_bulb"
+        }
+      ],
+      "explodedParts": []
+    },
+    {
+      "id": "c4_rear_air_suspension_bellows",
+      "title": "Rear Air Suspension Spring (Pneumatic Bellows) Replacement",
+      "targetGeneration": "MK1_B58",
+      "targetEngine": "DV6_16_HDI",
+      "category": "SUSPENSION",
+      "difficulty": "INTERMEDIATE",
+      "estimatedMinutes": 60,
+      "summary": "Servicing leaking rear pneumatic air suspension bags on Grand Picasso Exclusive models. Details vehicle suspension deflation, push-fit brass airline disconnection, top retaining clip, and calibration.",
+      "safetyNotes": [
+        "DEPRESSURIZE AIR SYSTEM FIRST: High pressure air (up to 9 bar) can cause injury if airline is released while pressurized.",
+        "SUPPORT AXLE: The rear trailing arm will drop once the pneumatic bag is unseated."
+      ],
+      "toolsNeeded": [
+        {
+          "name": "Flat Screwdriver / Seal Pick",
+          "size": "Standard",
+          "category": "HAND_TOOL",
+          "isCrucial": true
+        },
+        {
+          "name": "10mm Open Ended Spanner (Airline Fitting)",
+          "size": "10mm",
+          "category": "WRENCH",
+          "isCrucial": true
+        }
+      ],
+      "torqueSpecs": [],
+      "steps": [
+        {
+          "stepNumber": 1,
+          "title": "Air Suspension Depressurization",
+          "instructions": "Locate the manual boot switch or use a diagnostic tool to fully lower the rear suspension to dump bag pressure. Disconnect battery.",
+          "graphicKey": "deflate_air"
+        },
+        {
+          "stepNumber": 2,
+          "title": "Jack Rear Axle & Remove Wheel",
+          "instructions": "Raise rear of car, place on heavy chassis stands, and remove the rear wheel.",
+          "graphicKey": "rear_wheel"
+        },
+        {
+          "stepNumber": 3,
+          "title": "Disconnect Pneumatic Airline",
+          "instructions": "Push the brass collet ring inwards while pulling the 4mm nylon airline tube outwards to release the push-fit union.",
+          "graphicKey": "airline_release"
+        },
+        {
+          "stepNumber": 4,
+          "title": "Bellows Twist & Disengage",
+          "instructions": "Twist the rubber air spring 90 degrees counter-clockwise to disengage the bayonet locking lugs from the axle perch. Install new bag.",
+          "graphicKey": "bellows_twist"
+        }
+      ],
+      "explodedParts": []
+    }
+  ]
+}
