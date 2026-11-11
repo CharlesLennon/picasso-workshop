@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "dataVersion": "20261111_02",
+  "dataVersion": "20261111_03",
   "releaseDate": "2026-11-11",
-  "title": "Citroën C4 Grand Picasso Technical Workshop Dataset",
+  "title": "Citro\u00ebn C4 Grand Picasso Technical Workshop Dataset",
   "quickTorqueLookup": {
     "Alternator Lower Pivot Bolt (1.6 HDi)": 40.0,
     "Alternator Upper Mounting Bolts (1.6 HDi)": 40.0,
@@ -70,7 +70,7 @@
         },
         {
           "name": "Calibrated Torque Wrench",
-          "size": "10–60 Nm",
+          "size": "10\u201360 Nm",
           "category": "HAND_TOOL",
           "isCrucial": true
         }
@@ -213,7 +213,7 @@
           "instructions": "Maneuver the alternator downward and outward through the space between the subframe, right wheel arch inner edge, and lower radiator hose. On installation: slide new alternator into mounting lugs; finger-tighten lower pivot bolt first, followed by upper bolts. Torque lower and upper mounting bolts to 40 Nm. Torque B+ nut to 15 Nm. Refit auxiliary belt according to the serpentine routing schematic. Rotate tensioner to release the 4mm locking pin. Reconnect battery and let vehicle idle for 2 minutes before testing charge voltage (target: 14.1V - 14.4V).",
           "tool": {
             "name": "Torque Wrench & Multimeter",
-            "size": "10–50 Nm / DC Volts",
+            "size": "10\u201350 Nm / DC Volts",
             "category": "HAND_TOOL",
             "isCrucial": true
           },
@@ -566,13 +566,13 @@
     },
     {
       "id": "c4_picasso_mk1_fuse_directory",
-      "title": "Fuse Box Layouts & Electrical Diagnostics (Mk1 2006–2013)",
+      "title": "Fuse Box Layouts & Electrical Diagnostics (Mk1 2006\u20132013)",
       "targetGeneration": "MK1_B58",
       "targetEngine": "DV6_16_HDI",
       "category": "ENGINE_ELECTRICAL",
       "difficulty": "BEGINNER",
       "estimatedMinutes": 15,
-      "summary": "Full technical fuse allocation maps for 2010 Citroën C4 Grand Picasso (StartMyCar verified). Covers Dashboard Cabin Box (BSI1), Under-Bonnet Engine Box (BSM), and Battery-Top Distribution Unit (BPGA). Instant diagnostic lookup for 12V sockets (F9), Air Suspension (F10/MF3), Starter Relay (F8), OBD Port (F4), and Washer Pump (F3).",
+      "summary": "Full technical fuse allocation maps for 2010 Citro\u00ebn C4 Grand Picasso (StartMyCar verified). Covers Dashboard Cabin Box (BSI1), Under-Bonnet Engine Box (BSM), and Battery-Top Distribution Unit (BPGA). Instant diagnostic lookup for 12V sockets (F9), Air Suspension (F10/MF3), Starter Relay (F8), OBD Port (F4), and Washer Pump (F3).",
       "safetyNotes": [
         "ALWAYS DISCONNECT IGNITION: Turn off ignition and remove key before inspecting or pulling any fuse.",
         "EXACT AMPERAGE REPLACEMENT: Never substitute a blown fuse with a higher amperage fuse or makeshift jumper wire; this can destroy the BSI microprocessor board or cause vehicle fire.",
@@ -852,6 +852,534 @@
           "description": "High-current 40A supply to rear air suspension 12V pneumatic compressor under the offside sill."
         }
       ]
+    }
+  ],
+  "diagnosticEcus": [
+    {
+      "id": "GENERIC_OBD",
+      "displayName": "Generic Powertrain OBD-II",
+      "shortCode": "GENERIC",
+      "requestHeader": "7DF",
+      "responseHeader": "7E8",
+      "protocolType": "CAN_500K",
+      "initSequence": [
+        "ATSH 7DF"
+      ],
+      "dtcReadCommands": [
+        "03",
+        "07"
+      ],
+      "dtcClearCommands": [
+        "04"
+      ],
+      "responseParser": "STANDARD_MODE03",
+      "targetGeneration": "MK1_B58",
+      "targetEngine": "DV6_16_HDI",
+      "description": "Standard emissions-related broadcast to all powertrain nodes"
+    },
+    {
+      "id": "ENGINE_EDC16",
+      "displayName": "Engine Management (EDC16C34 / EDC17C10 / DCM3.4)",
+      "shortCode": "ENGINE",
+      "requestHeader": "7E0",
+      "responseHeader": "7E8",
+      "protocolType": "UDS_CAN_500K",
+      "initSequence": [
+        "ATSH 7E0"
+      ],
+      "dtcReadCommands": [
+        "19 02 FF",
+        "03"
+      ],
+      "dtcClearCommands": [
+        "14 FF 00",
+        "04"
+      ],
+      "responseParser": "UDS_OR_STANDARD",
+      "targetGeneration": "MK1_B58",
+      "targetEngine": "DV6_16_HDI",
+      "description": "PSA Common Rail Diesel Engine ECU for DV6 1.6 HDi and DW10 2.0 HDi"
+    },
+    {
+      "id": "BSI_BODY",
+      "displayName": "BSI (Built-in Systems Interface / Body Computer)",
+      "shortCode": "BSI",
+      "requestHeader": "752",
+      "responseHeader": "75A",
+      "protocolType": "PSA_DIAGONCAN",
+      "initSequence": [
+        "ATSH 752"
+      ],
+      "dtcReadCommands": [
+        "19 02 FF",
+        "03"
+      ],
+      "dtcClearCommands": [
+        "14 FF 00"
+      ],
+      "responseParser": "BSI_HEX",
+      "targetGeneration": "MK1_B58",
+      "targetEngine": "DV6_16_HDI",
+      "description": "Central comfort, lighting, security, and immobilizer gateway"
+    },
+    {
+      "id": "AIR_SUSPENSION_BAP",
+      "displayName": "Pneumatic Air Suspension ECU (BAP)",
+      "shortCode": "SUSPENSION",
+      "requestHeader": "7A0",
+      "responseHeader": "7A8",
+      "protocolType": "PSA_DIAGONCAN",
+      "initSequence": [
+        "ATSH 7A0"
+      ],
+      "dtcReadCommands": [
+        "19 02 FF",
+        "03"
+      ],
+      "dtcClearCommands": [
+        "14 FF 00"
+      ],
+      "responseParser": "UDS_OR_STANDARD",
+      "targetGeneration": "MK1_B58",
+      "targetEngine": "DV6_16_HDI",
+      "description": "Rear axle pneumatic height corrector and 12V air compressor controller"
+    },
+    {
+      "id": "EGS6_TRANSMISSION",
+      "displayName": "EGS6 Robotized 6-Speed Transmission (CFC300P)",
+      "shortCode": "GEARBOX",
+      "requestHeader": "7E1",
+      "responseHeader": "7E9",
+      "protocolType": "UDS_CAN_500K",
+      "initSequence": [
+        "ATSH 7E1"
+      ],
+      "dtcReadCommands": [
+        "19 02 FF",
+        "03"
+      ],
+      "dtcClearCommands": [
+        "14 FF 00"
+      ],
+      "responseParser": "UDS_OR_STANDARD",
+      "targetGeneration": "MK1_B58",
+      "targetEngine": "DV6_16_HDI",
+      "description": "Robotized clutch actuator and hydraulic pressure pump controller"
+    }
+  ],
+  "dtcDefinitions": [
+    {
+      "code": "P1351",
+      "ecuId": "ENGINE_EDC16",
+      "title": "Preheating Relay Circuit (Glow Plugs Not Supplied)",
+      "technicalDescription": "The preheating control unit receives power but detects an open circuit to one or more glow plugs. Very common on 1.6 HDi (DV6); does not illuminate the Check Engine Light (MIL).",
+      "commonCauses": [
+        "One or more burnt glow plugs (high internal resistance)",
+        "Preheating relay contacts corroded (under battery tray)",
+        "Glow plug wiring harness damaged or loose terminal connector"
+      ],
+      "procedureIdLink": "c4_picasso_mk1_fuse_directory",
+      "severity": "WARNING"
+    },
+    {
+      "code": "P1352",
+      "ecuId": "ENGINE_EDC16",
+      "title": "Preheating Relay Circuit (Relay Supplied / Control Discrepancy)",
+      "technicalDescription": "Engine management ECU detected coherence failure between commanded glow plug state and relay feedback.",
+      "commonCauses": [
+        "Defective preheat relay unit",
+        "Blown preheat supply fuse in engine BSM / battery distribution unit",
+        "Earth connection fault on engine block"
+      ],
+      "procedureIdLink": "c4_picasso_mk1_fuse_directory",
+      "severity": "WARNING"
+    },
+    {
+      "code": "P1459",
+      "ecuId": "ENGINE_EDC16",
+      "title": "EGR Valve Position Sensor (Stuck Open / Flow Mismatch)",
+      "technicalDescription": "The exhaust gas recirculation valve potentiometer signal does not match the commanded lift position during deceleration or regeneration.",
+      "commonCauses": [
+        "Heavy carbon soot jamming Valeo EGR pintle valve",
+        "EGR valve electrical actuator motor gear wear",
+        "Faulty EGR position sensor wiring"
+      ],
+      "procedureIdLink": null,
+      "severity": "CRITICAL"
+    },
+    {
+      "code": "P0299",
+      "ecuId": "ENGINE_EDC16",
+      "title": "Turbocharger Underboost (Boost Pressure Below Threshold)",
+      "technicalDescription": "Measured manifold absolute pressure (MAP) is lower than target boost pressure by more than 300 mbar for over 5 seconds under load.",
+      "commonCauses": [
+        "Split turbo intercooler air doser rubber hose (common behind radiator)",
+        "Turbo electro-pneumatic vacuum control solenoid valve failed",
+        "Vacuum hose cracked, perished, or detached from wastegate actuator",
+        "Turbocharger variable nozzle (VNT) mechanism carbonized and binding"
+      ],
+      "procedureIdLink": null,
+      "severity": "CRITICAL"
+    },
+    {
+      "code": "P0234",
+      "ecuId": "ENGINE_EDC16",
+      "title": "Turbocharger Overboost Condition",
+      "technicalDescription": "Charge air pressure exceeded maximum safe threshold. Engine may enter limp-home mode to protect intercooler and pistons.",
+      "commonCauses": [
+        "Variable vane geometry sticking in high boost position",
+        "Turbo vacuum solenoid stuck venting to atmospheric pressure",
+        "Faulty MAP sensor signal reading high"
+      ],
+      "procedureIdLink": null,
+      "severity": "CRITICAL"
+    },
+    {
+      "code": "P1382",
+      "ecuId": "ENGINE_EDC16",
+      "title": "Reversible Alternator / Drive Belt Slip (Stop-Start / Charging)",
+      "technicalDescription": "Alternator excitation or freewheel clutch pulley slippage detected. Charging voltage intermittent or belt tensioner loose.",
+      "commonCauses": [
+        "Seized alternator freewheel overrunning clutch pulley (OAP)",
+        "Auxiliary drive belt slack or dynamic tensioner damper worn out",
+        "Alternator internal voltage regulator brush wear (150A Valeo/Mitsubishi)"
+      ],
+      "procedureIdLink": "dv6_alternator_removal",
+      "severity": "CRITICAL"
+    },
+    {
+      "code": "P0562",
+      "ecuId": "ENGINE_EDC16",
+      "title": "System Charging Voltage Low (< 10.5V)",
+      "technicalDescription": "Engine ECU battery sense line drops below minimum operating voltage while engine is running.",
+      "commonCauses": [
+        "Failing alternator assembly or worn brushes",
+        "Slack auxiliary drive belt slipping under electrical load",
+        "Corroded battery earth strap or blown BPGA maxi fuse"
+      ],
+      "procedureIdLink": "dv6_alternator_removal",
+      "severity": "CRITICAL"
+    },
+    {
+      "code": "P0563",
+      "ecuId": "ENGINE_EDC16",
+      "title": "System Charging Voltage High (> 15.8V)",
+      "technicalDescription": "Alternator internal voltage regulator failure causing dangerous over-voltage to vehicle microprocessors.",
+      "commonCauses": [
+        "Alternator diode pack or regulator shorted internally",
+        "Loose B+ alternator output cable nut (13mm)"
+      ],
+      "procedureIdLink": "dv6_alternator_removal",
+      "severity": "CRITICAL"
+    },
+    {
+      "code": "P1693",
+      "ecuId": "ENGINE_EDC16",
+      "title": "Engine Starting / Stopping Controlled by Engine ECU Discrepancy",
+      "technicalDescription": "Engine ECU received starting command not synchronized with BSI immobilizer key transponder authorization.",
+      "commonCauses": [
+        "Low battery voltage during cranking causing BSI reboot",
+        "Ignition switch contact bounce (Neiman switch)",
+        "Starter motor solenoid drawing excessive current"
+      ],
+      "procedureIdLink": "c4_picasso_mk1_fuse_directory",
+      "severity": "WARNING"
+    },
+    {
+      "code": "P0087",
+      "ecuId": "ENGINE_EDC16",
+      "title": "Fuel Rail Pressure Below Minimum Setpoint",
+      "technicalDescription": "Common rail pressure drops below target rail pressure under heavy acceleration.",
+      "commonCauses": [
+        "Blocked diesel fuel filter (high restriction)",
+        "High pressure fuel pump flow regulator valve sticking",
+        "Excessive injector spill back (leak-off)"
+      ],
+      "procedureIdLink": "dv6_fuel_filter_replacement",
+      "severity": "CRITICAL"
+    },
+    {
+      "code": "P0088",
+      "ecuId": "ENGINE_EDC16",
+      "title": "Fuel Rail Pressure Exceeded Setpoint",
+      "technicalDescription": "Measured common rail pressure higher than commanded limit. High pressure safety limiter opened.",
+      "commonCauses": [
+        "Common rail pressure regulator valve stuck closed",
+        "Fuel rail pressure sensor calibration drifted"
+      ],
+      "procedureIdLink": null,
+      "severity": "CRITICAL"
+    },
+    {
+      "code": "P1445",
+      "ecuId": "ENGINE_EDC16",
+      "title": "DPF Additive Quantity Injected Into Filter Exceeded Limit",
+      "technicalDescription": "Additive fluid dosing counter has reached theoretical maximum filter capacity. FAP soot filter service required.",
+      "commonCauses": [
+        "DPF particulate filter loaded with non-burnable cerine ash",
+        "Additive pump counter requires reset after physical filter clean"
+      ],
+      "procedureIdLink": null,
+      "severity": "WARNING"
+    },
+    {
+      "code": "P1446",
+      "ecuId": "ENGINE_EDC16",
+      "title": "DPF Additive (EOLYS) Reservoir Empty",
+      "technicalDescription": "Additive level sensor in the additive pouch/tank under the vehicle has detected empty fluid condition.",
+      "commonCauses": [
+        "EOLYS / Powerflex additive fluid exhausted in tank",
+        "Additive level sensor float switch stuck"
+      ],
+      "procedureIdLink": null,
+      "severity": "CRITICAL"
+    },
+    {
+      "code": "P2408",
+      "ecuId": "ENGINE_EDC16",
+      "title": "Fuel Tank Filler Cap Sensor Circuit Coherence",
+      "technicalDescription": "Reed switch sensor on the fuel filler neck cannot detect the magnet on the fuel cap. Additive dosing suspended.",
+      "commonCauses": [
+        "Magnet missing from aftermarket replacement fuel cap",
+        "Fuel filler cap sensor reed switch wiring broken near fuel tank"
+      ],
+      "procedureIdLink": null,
+      "severity": "WARNING"
+    },
+    {
+      "code": "C1196",
+      "ecuId": "AIR_SUSPENSION_BAP",
+      "title": "Air Compressor Max Runtime Exceeded (Thermal Protection)",
+      "technicalDescription": "12V air suspension compressor ran continuously for over 180 seconds trying to reach target chassis ride height. Thermal cut-off triggered.",
+      "commonCauses": [
+        "Perished rear pneumatic rubber spring bellows leaking air under load",
+        "Split 4mm nylon airline tube near rear suspension arm pivot",
+        "Compressor piston ring worn, producing insufficient flow (< 5 bar)"
+      ],
+      "procedureIdLink": "c4_rear_air_suspension_bellows",
+      "severity": "CRITICAL"
+    },
+    {
+      "code": "C1197",
+      "ecuId": "AIR_SUSPENSION_BAP",
+      "title": "Air Suspension Solenoid Valve Leak / Pressure Drop",
+      "technicalDescription": "Chassis height drops when air valves are closed. Uncommanded deflation detected.",
+      "commonCauses": [
+        "Pneumatic bellows puncture or micro-porosity along bottom rubber fold",
+        "Brass push-fit airline union seal leaking",
+        "Solenoid valve manifold internal seal contamination"
+      ],
+      "procedureIdLink": "c4_rear_air_suspension_bellows",
+      "severity": "CRITICAL"
+    },
+    {
+      "code": "C1198",
+      "ecuId": "AIR_SUSPENSION_BAP",
+      "title": "Rear Right Height Sensor Voltage Coherence Error",
+      "technicalDescription": "Sensor output voltage outside allowable physical travel range (0.5V to 4.5V).",
+      "commonCauses": [
+        "Height sensor plastic linkage arm ball joint popped off trailing arm",
+        "Sensor internal resistive track water corroded",
+        "Sensor harness unplugged or pinched"
+      ],
+      "procedureIdLink": null,
+      "severity": "CRITICAL"
+    },
+    {
+      "code": "C1199",
+      "ecuId": "AIR_SUSPENSION_BAP",
+      "title": "Rear Left Height Sensor Voltage Coherence Error",
+      "technicalDescription": "Sensor output voltage outside allowable physical travel range (0.5V to 4.5V).",
+      "commonCauses": [
+        "Height sensor linkage ball joint popped off axle arm",
+        "Sensor water ingress",
+        "Wiring harness damage"
+      ],
+      "procedureIdLink": null,
+      "severity": "CRITICAL"
+    },
+    {
+      "code": "P1755",
+      "ecuId": "EGS6_TRANSMISSION",
+      "title": "Clutch Actuator Position Sensor Signal Coherence",
+      "technicalDescription": "Discrepancy between commanded clutch release position and actual position reported by Hall effect sensor.",
+      "commonCauses": [
+        "Clutch release bearing guide sleeve sticky or dry of grease",
+        "Clutch friction plate worn to rivets, causing clutch judder",
+        "Hydraulic slave cylinder internal seal leakage",
+        "EGS6 clutch bite-point calibration adaptation needed"
+      ],
+      "procedureIdLink": null,
+      "severity": "CRITICAL"
+    },
+    {
+      "code": "P0944",
+      "ecuId": "EGS6_TRANSMISSION",
+      "title": "Hydraulic Circuit Pressure Loss (EGS6 Pump Unit)",
+      "technicalDescription": "Hydraulic pressure drops below 35 bar while vehicle is in gear. Gearbox shifts to neutral for safety.",
+      "commonCauses": [
+        "Hydraulic pressure accumulator nitrogen sphere diaphragm failed",
+        "Electric hydraulic pump motor relay or brushes worn",
+        "Low Tutela CS Speed fluid level in EGS actuator reservoir"
+      ],
+      "procedureIdLink": null,
+      "severity": "CRITICAL"
+    },
+    {
+      "code": "P0868",
+      "ecuId": "EGS6_TRANSMISSION",
+      "title": "Hydraulic Fluid Pressure Low (< 38 Bar)",
+      "technicalDescription": "Hydraulic pump running excessively without reaching cutoff pressure (48 bar).",
+      "commonCauses": [
+        "Hydraulic pump electric motor failing",
+        "Accumulator sphere lost charge",
+        "Fluid leak from actuator block unions"
+      ],
+      "procedureIdLink": null,
+      "severity": "CRITICAL"
+    },
+    {
+      "code": "P1704",
+      "ecuId": "EGS6_TRANSMISSION",
+      "title": "Brake Pedal Switch Signal Coherence For Gear Selection",
+      "technicalDescription": "Dual brake switch contacts (normally open / normally closed) do not switch simultaneously. EGS prevents shifting into D/R.",
+      "commonCauses": [
+        "Faulty four-pin brake light switch above brake pedal",
+        "Brake switch ratchet clip out of adjustment"
+      ],
+      "procedureIdLink": "c4_picasso_mk1_fuse_directory",
+      "severity": "WARNING"
+    },
+    {
+      "code": "F000",
+      "ecuId": "BSI_BODY",
+      "title": "BSI Internal Power Supply / Microprocessor Wake-Up Error",
+      "technicalDescription": "BSI main computer suffered severe transient voltage drop during engine start or sleep transition.",
+      "commonCauses": [
+        "Weak 12V vehicle battery (< 11.8V resting)",
+        "High starter motor current draw dragging system voltage",
+        "Loose battery positive terminal quick-release clamp"
+      ],
+      "procedureIdLink": "c4_picasso_mk1_fuse_directory",
+      "severity": "WARNING"
+    },
+    {
+      "code": "FC82",
+      "ecuId": "BSI_BODY",
+      "title": "Remote Key Wake-up Synchronization Error",
+      "technicalDescription": "High frequency key fob waking signal received without matching transponder immobilizer handshake.",
+      "commonCauses": [
+        "Weak CR1620 battery in remote key fob",
+        "Key transponder antenna coil around ignition barrel intermittent",
+        "Radio frequency interference"
+      ],
+      "procedureIdLink": null,
+      "severity": "INFO"
+    },
+    {
+      "code": "F015",
+      "ecuId": "BSI_BODY",
+      "title": "Trailer Relay Module (BSG) Lost on CAN Bus",
+      "technicalDescription": "BSI configured for trailer module but receives no CAN acknowledgement frame.",
+      "commonCauses": [
+        "13-pin trailer socket water ingress causing short circuit",
+        "Trailer module fuse blown in boot fuse panel (F12)",
+        "Aftermarket towbar wiring harness disconnected"
+      ],
+      "procedureIdLink": "c4_picasso_mk1_fuse_directory",
+      "severity": "INFO"
+    },
+    {
+      "code": "U1213",
+      "ecuId": "BSI_BODY",
+      "title": "Dynamic Vehicle Speed Frame Received From ABS Invalid",
+      "technicalDescription": "ABS/ESP ECU broadcast invalid speed value on CAN network.",
+      "commonCauses": [
+        "ABS wheel speed sensor magnetic target ring corroded on rear hub",
+        "Low battery voltage causing ABS transient communication drop"
+      ],
+      "procedureIdLink": null,
+      "severity": "WARNING"
+    },
+    {
+      "code": "U1118",
+      "ecuId": "BSI_BODY",
+      "title": "CAN Communication Lost With BSI Body Computer",
+      "technicalDescription": "CAN network timeout between Engine ECU and BSI.",
+      "commonCauses": [
+        "Engine bay wiring harness chafing under air filter box",
+        "BSI 3-minute sleep protocol violated during battery reconnection"
+      ],
+      "procedureIdLink": "c4_picasso_mk1_fuse_directory",
+      "severity": "WARNING"
+    }
+  ],
+  "livePids": [
+    {
+      "pidId": "BATTERY_VOLTS",
+      "displayName": "Battery Charging Voltage",
+      "command": "ATRV",
+      "ecuHeader": "7DF",
+      "responsePrefix": "",
+      "unit": "V",
+      "formulaType": "ATRV_VOLTS",
+      "normalMin": 13.5,
+      "normalMax": 14.8
+    },
+    {
+      "pidId": "COOLANT_TEMP",
+      "displayName": "Engine Coolant Temperature",
+      "command": "0105",
+      "ecuHeader": "7DF",
+      "responsePrefix": "4105",
+      "unit": "\u00b0C",
+      "formulaType": "COOLANT_SUB40",
+      "normalMin": 80.0,
+      "normalMax": 95.0
+    },
+    {
+      "pidId": "ENGINE_RPM",
+      "displayName": "Engine Speed",
+      "command": "010C",
+      "ecuHeader": "7DF",
+      "responsePrefix": "410C",
+      "unit": "RPM",
+      "formulaType": "RPM_DIV4",
+      "normalMin": 750.0,
+      "normalMax": 4500.0
+    },
+    {
+      "pidId": "VEHICLE_SPEED",
+      "displayName": "Vehicle Speed",
+      "command": "010D",
+      "ecuHeader": "7DF",
+      "responsePrefix": "410D",
+      "unit": "km/h",
+      "formulaType": "SPEED_RAW",
+      "normalMin": 0.0,
+      "normalMax": 200.0
+    },
+    {
+      "pidId": "TURBO_BOOST",
+      "displayName": "Turbo Boost Pressure",
+      "command": "010B",
+      "ecuHeader": "7DF",
+      "responsePrefix": "410B",
+      "unit": "Bar",
+      "formulaType": "BOOST_KPA_TO_BAR",
+      "normalMin": 0.0,
+      "normalMax": 1.4
+    },
+    {
+      "pidId": "RAIL_PRESSURE",
+      "displayName": "Common Rail Diesel Pressure",
+      "command": "0123",
+      "ecuHeader": "7DF",
+      "responsePrefix": "4123",
+      "unit": "Bar",
+      "formulaType": "RAIL_PRESSURE_BAR",
+      "normalMin": 250.0,
+      "normalMax": 1600.0
     }
   ]
 }

@@ -1,5 +1,6 @@
 package com.picassoworkshop.app.obd
 
+import com.picassoworkshop.app.data.model.DtcDefinition
 import com.picassoworkshop.app.obd.model.EcuTarget
 import org.junit.Assert.*
 import org.junit.Test
@@ -7,6 +8,32 @@ import org.junit.Test
 class ElmProtocolEngineTest {
 
     private val engine = ElmProtocolEngine()
+
+    private val sampleDefinitions = listOf(
+        DtcDefinition(
+            code = "P1351",
+            ecuId = "ENGINE_EDC16",
+            title = "Preheating Relay Circuit (Glow Plugs Not Supplied)",
+            technicalDescription = "Glow plugs open circuit.",
+            severity = "WARNING"
+        ),
+        DtcDefinition(
+            code = "P1382",
+            ecuId = "ENGINE_EDC16",
+            title = "Alternator Freewheel Clutch Slip",
+            technicalDescription = "Alternator excitation error.",
+            procedureIdLink = "dv6_alternator_removal",
+            severity = "CRITICAL"
+        ),
+        DtcDefinition(
+            code = "C1196",
+            ecuId = "AIR_SUSPENSION_BAP",
+            title = "Air Compressor Max Runtime Exceeded",
+            technicalDescription = "Thermal cut-off tripped.",
+            procedureIdLink = "c4_rear_air_suspension_bellows",
+            severity = "CRITICAL"
+        )
+    )
 
     @Test
     fun testDecode2ByteDtc() {
@@ -20,7 +47,7 @@ class ElmProtocolEngineTest {
     @Test
     fun testParseStandardMode03Response() {
         val raw = "43 02 02 99 13 82\r\r>"
-        val faults = engine.parseStandardMode03Response(raw, EcuTarget.ENGINE_EDC16)
+        val faults = engine.parseStandardMode03Response(raw, EcuTarget.ENGINE_EDC16, sampleDefinitions)
 
         assertEquals(2, faults.size)
         assertEquals("P0299", faults[0].code)
@@ -32,7 +59,7 @@ class ElmProtocolEngineTest {
     fun testParsePsaUdsService19Response() {
         // 59 02 FF [1351 00 28] [5196 12 28]
         val raw = "59 02 FF 13 51 00 28 51 96 12 28\r\r>"
-        val faults = engine.parsePsaUdsService19Response(raw, EcuTarget.AIR_SUSPENSION_BAP)
+        val faults = engine.parsePsaUdsService19Response(raw, EcuTarget.AIR_SUSPENSION_BAP, sampleDefinitions)
 
         assertEquals(2, faults.size)
         assertEquals("P1351", faults[0].code)

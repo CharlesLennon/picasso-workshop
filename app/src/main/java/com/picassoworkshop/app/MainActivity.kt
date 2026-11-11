@@ -51,7 +51,7 @@ class MainActivity : ComponentActivity() {
         dataManager = WorkshopDataManager(applicationContext)
         updateManager = AppUpdateManager(applicationContext)
         bluetoothConnectionManager = BluetoothConnectionManager(applicationContext)
-        obdCoordinator = ObdDiagnosticsCoordinator(bluetoothConnectionManager)
+        obdCoordinator = ObdDiagnosticsCoordinator(bluetoothConnectionManager, dataManager)
 
         // Load saved vehicle selection or default to Mk1 1.6 HDi
         val isFirstLaunch = !prefs.getBoolean("has_selected_vehicle", false)

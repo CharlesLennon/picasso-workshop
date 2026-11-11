@@ -9,5 +9,8 @@ data class WorkshopContentPackage(
     val releaseDate: String = "2026-11-11",
     val title: String = "Citroën C4 Grand Picasso Technical Workshop Dataset",
     val procedures: List<RepairProcedure> = emptyList(),
-    val quickTorqueLookup: Map<String, Double> = emptyMap()
+    val quickTorqueLookup: Map<String, Double> = emptyMap(),
+    val diagnosticEcus: List<DiagnosticEcuConfig> = emptyList(),
+    val dtcDefinitions: List<DtcDefinition> = emptyList(),
+    val livePids: List<LivePidConfig> = emptyList()
 )

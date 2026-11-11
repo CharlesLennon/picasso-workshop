@@ -92,6 +92,22 @@ class WorkshopDataManager(private val context: Context) {
         return _contentPackage.value.procedures.firstOrNull { it.id == id }
     }
 
+    fun getDiagnosticEcusForVehicle(selection: VehicleSelection): List<com.picassoworkshop.app.data.model.DiagnosticEcuConfig> {
+        val all = _contentPackage.value.diagnosticEcus
+        return all.filter { ecu ->
+            selection.matches(ecu.targetGeneration, ecu.targetEngine)
+        }
+    }
+
+    fun getDtcDefinition(code: String): com.picassoworkshop.app.data.model.DtcDefinition? {
+        val clean = code.trim().uppercase()
+        return _contentPackage.value.dtcDefinitions.firstOrNull { it.code.equals(clean, ignoreCase = true) }
+    }
+
+    fun getLivePids(): List<com.picassoworkshop.app.data.model.LivePidConfig> {
+        return _contentPackage.value.livePids
+    }
+
     fun checkForDataUpdates(dataRepo: String = "CharlesLennon/picasso-data") {
         scope.launch {
             _updateState.value = DataUpdateState.Checking

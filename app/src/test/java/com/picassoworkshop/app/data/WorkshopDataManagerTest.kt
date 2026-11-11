@@ -157,4 +157,70 @@ class WorkshopDataManagerTest {
         assertEquals(160f, x50, 0.001f)
         assertEquals(340f, y50, 0.001f)
     }
+
+    @Test
+    fun testParseDiagnosticEcusAndDtcDefinitions() {
+        val testJson = """
+        {
+          "schemaVersion": 1,
+          "dataVersion": "20261111_03",
+          "releaseDate": "2026-11-11",
+          "title": "Citroën C4 Grand Picasso Technical Workshop Dataset",
+          "diagnosticEcus": [
+            {
+              "id": "ENGINE_EDC16",
+              "displayName": "Bosch EDC16C34 Engine Management",
+              "shortCode": "EDC16",
+              "requestHeader": "7E0",
+              "responseHeader": "7E8",
+              "initSequence": ["ATSP6", "ATSH7DF", "0100"],
+              "dtcReadCommands": ["03", "19 02 FF"],
+              "dtcClearCommands": ["04", "14 FF 00"],
+              "targetGeneration": "MK1_B58",
+              "targetEngine": "DV6_16_HDI"
+            }
+          ],
+          "dtcDefinitions": [
+            {
+              "code": "P0299",
+              "ecuId": "ENGINE_EDC16",
+              "title": "Turbocharger / Supercharger Underboost Condition",
+              "technicalDescription": "Measured manifold pressure lower than setpoint.",
+              "commonCauses": ["Split vacuum pipe", "Faulty turbo electrovalve"],
+              "severity": "WARNING",
+              "procedureIdLink": "dv6_turbo_electrovalve_check"
+            }
+          ],
+          "livePids": [
+            {
+              "pidId": "BATTERY_VOLTS",
+              "displayName": "Battery Voltage",
+              "command": "ATRV",
+              "formulaType": "ATRV_VOLTS",
+              "unit": "V",
+              "normalMin": 12.0,
+              "normalMax": 14.8
+            }
+          ]
+        }
+        """.trimIndent()
+
+        val parsed = json.decodeFromString<WorkshopContentPackage>(testJson)
+        assertEquals(1, parsed.diagnosticEcus.size)
+        assertEquals(1, parsed.dtcDefinitions.size)
+        assertEquals(1, parsed.livePids.size)
+
+        val ecu = parsed.diagnosticEcus.first()
+        assertEquals("ENGINE_EDC16", ecu.id)
+        assertEquals("7E0", ecu.requestHeader)
+        assertEquals(listOf("03", "19 02 FF"), ecu.dtcReadCommands)
+
+        val dtc = parsed.dtcDefinitions.first()
+        assertEquals("P0299", dtc.code)
+        assertEquals("dv6_turbo_electrovalve_check", dtc.procedureIdLink)
+
+        val pid = parsed.livePids.first()
+        assertEquals("ATRV", pid.command)
+        assertEquals("ATRV_VOLTS", pid.formulaType)
+    }
 }

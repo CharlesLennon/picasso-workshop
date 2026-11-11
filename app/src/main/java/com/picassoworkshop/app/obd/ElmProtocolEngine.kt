@@ -1,5 +1,6 @@
 package com.picassoworkshop.app.obd
 
+import com.picassoworkshop.app.data.model.DtcDefinition
 import com.picassoworkshop.app.obd.model.DiagnosticFault
 import com.picassoworkshop.app.obd.model.EcuTarget
 import com.picassoworkshop.app.obd.model.LiveTelemetry
@@ -48,7 +49,11 @@ class ElmProtocolEngine {
      * Response payload contains standard 2-byte DTCs.
      * e.g. "430102990000" or with CAN headers "7E806430102990000"
      */
-    fun parseStandardMode03Response(rawResponse: String, ecu: EcuTarget = EcuTarget.GENERIC_OBD): List<DiagnosticFault> {
+    fun parseStandardMode03Response(
+        rawResponse: String,
+        ecu: EcuTarget = EcuTarget.GENERIC_OBD,
+        definitions: List<DtcDefinition> = emptyList()
+    ): List<DiagnosticFault> {
         val cleaned = cleanResponse(rawResponse)
         if (cleaned.isBlank() || cleaned.contains(ELM_NO_DATA) || isErrorResponse(cleaned)) {
             return emptyList()
@@ -72,7 +77,7 @@ class ElmProtocolEngine {
             if (chunk.length == 4 && chunk != "0000") {
                 val dtcCode = decode2ByteDtc(chunk)
                 if (dtcCode.isNotBlank()) {
-                    faults.add(PsaDtcDatabase.lookupFault(dtcCode, ecu, rawHex = chunk))
+                    faults.add(PsaDtcDatabase.lookupFault(dtcCode, ecu, rawHex = chunk, definitions = definitions))
                 }
             }
         }
@@ -85,7 +90,11 @@ class ElmProtocolEngine {
      * On PSA, each fault is 3 bytes (DTC High, DTC Low, Symptom Byte) + 1 Status byte.
      * Response marker: "5902FF" followed by [DTC 3 bytes][Status 1 byte]
      */
-    fun parsePsaUdsService19Response(rawResponse: String, ecu: EcuTarget): List<DiagnosticFault> {
+    fun parsePsaUdsService19Response(
+        rawResponse: String,
+        ecu: EcuTarget,
+        definitions: List<DtcDefinition> = emptyList()
+    ): List<DiagnosticFault> {
         val cleaned = cleanResponse(rawResponse)
         if (cleaned.isBlank() || cleaned.contains(ELM_NO_DATA) || isErrorResponse(cleaned)) {
             return emptyList()
@@ -107,7 +116,7 @@ class ElmProtocolEngine {
                 val symptomByte = entry.substring(4, 6)
                 if (dtc2ByteHex != "0000") {
                     val baseDtc = decode2ByteDtc(dtc2ByteHex)
-                    val fault = PsaDtcDatabase.lookupFault(baseDtc, ecu, rawHex = entry)
+                    val fault = PsaDtcDatabase.lookupFault(baseDtc, ecu, rawHex = entry, definitions = definitions)
                     faults.add(fault.copy(symptomByte = symptomByte))
                 }
             }
@@ -119,7 +128,10 @@ class ElmProtocolEngine {
     /**
      * Parses proprietary BSI hex fault responses (e.g., "FC82", "F000", "F015").
      */
-    fun parseBsiHexResponse(rawResponse: String): List<DiagnosticFault> {
+    fun parseBsiHexResponse(
+        rawResponse: String,
+        definitions: List<DtcDefinition> = emptyList()
+    ): List<DiagnosticFault> {
         val cleaned = cleanResponse(rawResponse)
         if (cleaned.isBlank() || cleaned.contains(ELM_NO_DATA) || isErrorResponse(cleaned)) {
             return emptyList()
@@ -132,7 +144,7 @@ class ElmProtocolEngine {
 
         for (match in matches) {
             val code = match.value
-            faults.add(PsaDtcDatabase.lookupFault(code, EcuTarget.BSI_BODY, rawHex = code))
+            faults.add(PsaDtcDatabase.lookupFault(code, EcuTarget.BSI_BODY, rawHex = code, definitions = definitions))
         }
 
         return faults
