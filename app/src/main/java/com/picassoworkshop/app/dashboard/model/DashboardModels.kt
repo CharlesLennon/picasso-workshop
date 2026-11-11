@@ -73,8 +73,37 @@ enum class PidCategory(val title: String) {
     SPEED_TRIP("Speed & Vehicle")
 }
 
+fun com.picassoworkshop.app.data.model.LivePidConfig.toPidMetadata(): PidMetadata {
+    val cat = when (category.uppercase()) {
+        "AIR_TURBO" -> PidCategory.AIR_TURBO
+        "FUEL" -> PidCategory.FUEL
+        "ELECTRICAL" -> PidCategory.ELECTRICAL
+        "SPEED_TRIP" -> PidCategory.SPEED_TRIP
+        else -> PidCategory.ENGINE
+    }
+    val gauge = try {
+        GaugeType.valueOf(recommendedGauge.uppercase())
+    } catch (_: Exception) {
+        GaugeType.DIGITAL_CARD
+    }
+    return PidMetadata(
+        id = pidId,
+        displayName = displayName,
+        standardCommand = command,
+        category = cat,
+        defaultUnit = unit,
+        defaultMin = defaultMin,
+        defaultMax = defaultMax,
+        defaultWarn = warnThreshold ?: normalMax,
+        defaultDanger = dangerThreshold,
+        recommendedGauge = gauge,
+        description = description
+    )
+}
+
 /**
  * Master catalog of all supported telemetry PIDs on the Citroën C4 Grand Picasso (DV6 1.6 HDi).
+ * Managed dynamically by the data repository (WorkshopDataManager).
  */
 object PidCatalog {
     const val PID_RPM = "ENGINE_RPM"
@@ -90,7 +119,28 @@ object PidCatalog {
     const val PID_MAF_RATE = "MAF_RATE"
     const val PID_OIL_TEMP = "OIL_TEMP"
 
-    val ALL_PIDS = listOf(
+    private val dynamicPids = mutableListOf<PidMetadata>()
+
+    /**
+     * Synchronizes PID catalog with sensor data pointers from the data repository.
+     */
+    fun updateFromDataRepository(pids: List<PidMetadata>) {
+        if (pids.isNotEmpty()) {
+            synchronized(dynamicPids) {
+                dynamicPids.clear()
+                dynamicPids.addAll(pids)
+            }
+        }
+    }
+
+    val ALL_PIDS: List<PidMetadata>
+        get() = synchronized(dynamicPids) {
+            if (dynamicPids.isNotEmpty()) dynamicPids.toList() else DEFAULT_PIDS
+        }
+
+    fun getById(pidId: String): PidMetadata? = ALL_PIDS.firstOrNull { it.id == pidId }
+
+    val DEFAULT_PIDS = listOf(
         PidMetadata(
             id = PID_RPM,
             displayName = "Engine RPM",
@@ -248,6 +298,4 @@ object PidCatalog {
             description = "Engine sump oil temperature (Nominal ~90-105°C during sustained motorway driving)"
         )
     )
-
-    fun getById(pidId: String): PidMetadata? = ALL_PIDS.firstOrNull { it.id == pidId }
 }

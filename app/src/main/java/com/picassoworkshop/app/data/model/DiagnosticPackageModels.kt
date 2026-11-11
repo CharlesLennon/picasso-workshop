@@ -40,5 +40,12 @@ data class LivePidConfig(
     val unit: String,                         // e.g. "V", "RPM", "°C", "Bar"
     val formulaType: String,                  // "ATRV_VOLTS", "RPM_DIV4", "COOLANT_SUB40", "SPEED_RAW", "BOOST_KPA_TO_BAR", "RAIL_PRESSURE_BAR"
     val normalMin: Double? = null,
-    val normalMax: Double? = null
+    val normalMax: Double? = null,
+    val category: String = "ENGINE",          // "ENGINE", "AIR_TURBO", "FUEL", "ELECTRICAL", "SPEED_TRIP"
+    val defaultMin: Double = 0.0,
+    val defaultMax: Double = 100.0,
+    val warnThreshold: Double? = null,
+    val dangerThreshold: Double? = null,
+    val recommendedGauge: String = "DIGITAL_CARD", // "RADIAL_DIAL", "BAR_GAUGE", "TREND_GRAPH", "DIGITAL_CARD", "STATUS_LIGHT"
+    val description: String = ""
 )

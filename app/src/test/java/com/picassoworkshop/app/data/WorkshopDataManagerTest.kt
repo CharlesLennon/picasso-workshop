@@ -4,6 +4,7 @@ import com.picassoworkshop.app.data.model.EngineType
 import com.picassoworkshop.app.data.model.Generation
 import com.picassoworkshop.app.data.model.VehicleSelection
 import com.picassoworkshop.app.data.model.WorkshopContentPackage
+import com.picassoworkshop.app.dashboard.model.toPidMetadata
 import kotlinx.serialization.json.Json
 import org.junit.Assert.*
 import org.junit.Test
@@ -222,5 +223,68 @@ class WorkshopDataManagerTest {
         val pid = parsed.livePids.first()
         assertEquals("ATRV", pid.command)
         assertEquals("ATRV_VOLTS", pid.formulaType)
+    }
+
+    @Test
+    fun testSensorPointerMappingAndPidMetadataConversion() {
+        val config = com.picassoworkshop.app.data.model.LivePidConfig(
+            pidId = "DPF_DIFF_PRESSURE",
+            displayName = "DPF Differential Pressure",
+            command = "017A",
+            ecuHeader = "7E0",
+            responsePrefix = "417A",
+            unit = "mbar",
+            formulaType = "RAW_INT",
+            category = "AIR_TURBO",
+            defaultMin = 0.0,
+            defaultMax = 200.0,
+            warnThreshold = 80.0,
+            dangerThreshold = 140.0,
+            recommendedGauge = "BAR_GAUGE",
+            description = "Differential pressure sensor across DPF"
+        )
+
+        val meta = config.toPidMetadata()
+        assertEquals("DPF_DIFF_PRESSURE", meta.id)
+        assertEquals("DPF Differential Pressure", meta.displayName)
+        assertEquals("017A", meta.standardCommand)
+        assertEquals(com.picassoworkshop.app.dashboard.model.PidCategory.AIR_TURBO, meta.category)
+        assertEquals("mbar", meta.defaultUnit)
+        assertEquals(0.0, meta.defaultMin, 0.01)
+        assertEquals(200.0, meta.defaultMax, 0.01)
+        assertEquals(80.0, meta.defaultWarn ?: 0.0, 0.01)
+        assertEquals(140.0, meta.defaultDanger ?: 0.0, 0.01)
+        assertEquals(com.picassoworkshop.app.dashboard.model.GaugeType.BAR_GAUGE, meta.recommendedGauge)
+    }
+
+    @Test
+    fun testBundledWorkshopDataLivePids() {
+        val file = java.io.File("src/main/assets/workshop_data.json")
+        assertTrue("workshop_data.json should exist in assets", file.exists())
+
+        val content = file.readText()
+        val pkg = json.decodeFromString<WorkshopContentPackage>(content)
+
+        assertTrue("Should have at least 12 live sensor pointers", pkg.livePids.size >= 12)
+        val pidsMap = pkg.livePids.associateBy { it.pidId }
+
+        assertTrue(pidsMap.containsKey("ENGINE_RPM"))
+        assertTrue(pidsMap.containsKey("SPEED_KMH"))
+        assertTrue(pidsMap.containsKey("COOLANT_TEMP"))
+        assertTrue(pidsMap.containsKey("BATTERY_VOLTS"))
+        assertTrue(pidsMap.containsKey("BOOST_PRESSURE"))
+        assertTrue(pidsMap.containsKey("RAIL_PRESSURE"))
+        assertTrue(pidsMap.containsKey("INTAKE_AIR_TEMP"))
+        assertTrue(pidsMap.containsKey("ENGINE_LOAD"))
+        assertTrue(pidsMap.containsKey("THROTTLE_POS"))
+        assertTrue(pidsMap.containsKey("FUEL_LEVEL"))
+        assertTrue(pidsMap.containsKey("MAF_RATE"))
+        assertTrue(pidsMap.containsKey("OIL_TEMP"))
+
+        // Verify formulas
+        assertEquals("RPM_DIV4", pidsMap["ENGINE_RPM"]?.formulaType)
+        assertEquals("ATRV_VOLTS", pidsMap["BATTERY_VOLTS"]?.formulaType)
+        assertEquals("BOOST_KPA_TO_BAR", pidsMap["BOOST_PRESSURE"]?.formulaType)
+        assertEquals("RAIL_PRESSURE_BAR", pidsMap["RAIL_PRESSURE"]?.formulaType)
     }
 }

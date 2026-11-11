@@ -1,6 +1,7 @@
 package com.picassoworkshop.app.obd
 
 import com.picassoworkshop.app.data.model.DtcDefinition
+import com.picassoworkshop.app.data.model.LivePidConfig
 import com.picassoworkshop.app.obd.model.DiagnosticFault
 import com.picassoworkshop.app.obd.model.EcuTarget
 import com.picassoworkshop.app.obd.model.LiveTelemetry
@@ -341,5 +342,74 @@ class ElmProtocolEngine {
             return a - 40
         }
         return 0
+    }
+
+    /**
+     * Dynamically decodes an arbitrary sensor value from an ELM327 response based on a
+     * sensor data pointer managed by the data repository.
+     */
+    fun decodeSensorValue(config: LivePidConfig, rawResponse: String): Double? {
+        val cleaned = cleanResponse(rawResponse)
+        if (cleaned.isBlank() || cleaned.contains("NODATA") || cleaned.contains("ERROR") || cleaned.contains("UNABLE")) {
+            return null
+        }
+
+        return when (config.formulaType.uppercase()) {
+            "ATRV_VOLTS" -> {
+                val v = parseBatteryVoltage(rawResponse)
+                if (v > 0f) v.toDouble() else null
+            }
+            "RPM_DIV4" -> {
+                val rpm = parseRpm(rawResponse)
+                if (rpm > 0) rpm.toDouble() else null
+            }
+            "SPEED_RAW" -> {
+                val spd = parseSpeed(rawResponse)
+                spd.toDouble()
+            }
+            "COOLANT_SUB40", "TEMP_SUB40", "IAT_SUB40", "OIL_TEMP_SUB40" -> {
+                val prefix = if (config.responsePrefix.isNotBlank()) config.responsePrefix else "41"
+                val idx = cleaned.indexOf(prefix, ignoreCase = true)
+                if (idx >= 0 && cleaned.length >= idx + prefix.length + 2) {
+                    val a = cleaned.substring(idx + prefix.length, idx + prefix.length + 2).toIntOrNull(16) ?: return null
+                    (a - 40).toDouble()
+                } else null
+            }
+            "BOOST_KPA_TO_BAR" -> {
+                val b = parseBoostPressure(rawResponse)
+                b.toDouble()
+            }
+            "RAIL_PRESSURE_BAR" -> {
+                val r = parseRailPressure(rawResponse)
+                if (r > 0) r.toDouble() else null
+            }
+            "PERCENT_255" -> {
+                val prefix = if (config.responsePrefix.isNotBlank()) config.responsePrefix else "41"
+                val idx = cleaned.indexOf(prefix, ignoreCase = true)
+                if (idx >= 0 && cleaned.length >= idx + prefix.length + 2) {
+                    val a = cleaned.substring(idx + prefix.length, idx + prefix.length + 2).toIntOrNull(16) ?: return null
+                    ((a * 100.0) / 255.0)
+                } else null
+            }
+            "MAF_DIV100" -> {
+                val maf = parseMafRate(rawResponse)
+                if (maf > 0f) maf.toDouble() else null
+            }
+            "RAW_INT" -> {
+                val prefix = if (config.responsePrefix.isNotBlank()) config.responsePrefix else "41"
+                val idx = cleaned.indexOf(prefix, ignoreCase = true)
+                if (idx >= 0 && cleaned.length >= idx + prefix.length + 2) {
+                    val hex = cleaned.substring(idx + prefix.length)
+                    hex.take(4).toIntOrNull(16)?.toDouble() ?: hex.take(2).toIntOrNull(16)?.toDouble()
+                } else null
+            }
+            else -> {
+                val prefix = if (config.responsePrefix.isNotBlank()) config.responsePrefix else "41"
+                val idx = cleaned.indexOf(prefix, ignoreCase = true)
+                if (idx >= 0 && cleaned.length >= idx + prefix.length + 2) {
+                    cleaned.substring(idx + prefix.length, idx + prefix.length + 2).toIntOrNull(16)?.toDouble()
+                } else null
+            }
+        }
     }
 }

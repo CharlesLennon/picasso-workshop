@@ -67,6 +67,16 @@ class DashboardManagerTest {
         assertEquals(48.2, telemetry.getValueForPid(PidCatalog.PID_MAF_RATE), 0.01)
         assertEquals(92.0, telemetry.getValueForPid(PidCatalog.PID_OIL_TEMP), 0.01)
         assertEquals(0.0, telemetry.getValueForPid("UNKNOWN_PID"), 0.01)
+
+        // Dynamic sensor values managed by data repository
+        val dynamicTelemetry = LiveTelemetry(
+            sensorValues = mapOf(
+                "DPF_DIFF" to 42.5,
+                "EGR_POS" to 85.0
+            )
+        )
+        assertEquals(42.5, dynamicTelemetry.getValueForPid("DPF_DIFF"), 0.01)
+        assertEquals(85.0, dynamicTelemetry.getValueForPid("EGR_POS"), 0.01)
     }
 
     @Test

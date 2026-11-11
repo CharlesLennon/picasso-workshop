@@ -1,6 +1,7 @@
 package com.picassoworkshop.app.obd
 
 import com.picassoworkshop.app.data.model.DtcDefinition
+import com.picassoworkshop.app.data.model.LivePidConfig
 import com.picassoworkshop.app.obd.model.EcuTarget
 import org.junit.Assert.*
 import org.junit.Test
@@ -116,6 +117,63 @@ class ElmProtocolEngineTest {
 
         // Oil Temp (82 hex = 130 - 40 = 90 °C)
         assertEquals(90, engine.parseOilTemp("41 5C 82\r\r>"))
+    }
+
+    @Test
+    fun testDynamicSensorPointerDecoding() {
+        val rpmConfig = LivePidConfig(
+            pidId = "ENGINE_RPM",
+            displayName = "Engine Speed",
+            command = "010C",
+            responsePrefix = "410C",
+            unit = "RPM",
+            formulaType = "RPM_DIV4"
+        )
+        val decodedRpm = engine.decodeSensorValue(rpmConfig, "41 0C 0C E0\r\r>")
+        assertEquals(824.0, decodedRpm ?: 0.0, 0.01)
+
+        val voltConfig = LivePidConfig(
+            pidId = "BATTERY_VOLTS",
+            displayName = "Battery Voltage",
+            command = "ATRV",
+            unit = "V",
+            formulaType = "ATRV_VOLTS"
+        )
+        val decodedVolts = engine.decodeSensorValue(voltConfig, "14.3V\r\r>")
+        assertEquals(14.3, decodedVolts ?: 0.0, 0.01)
+
+        val coolantConfig = LivePidConfig(
+            pidId = "COOLANT_TEMP",
+            displayName = "Coolant Temp",
+            command = "0105",
+            responsePrefix = "4105",
+            unit = "°C",
+            formulaType = "TEMP_SUB40"
+        )
+        val decodedCoolant = engine.decodeSensorValue(coolantConfig, "41 05 80\r\r>")
+        assertEquals(88.0, decodedCoolant ?: 0.0, 0.01)
+
+        val railConfig = LivePidConfig(
+            pidId = "RAIL_PRESSURE",
+            displayName = "Common Rail",
+            command = "0123",
+            responsePrefix = "4123",
+            unit = "Bar",
+            formulaType = "RAIL_PRESSURE_BAR"
+        )
+        val decodedRail = engine.decodeSensorValue(railConfig, "41 23 0B 80\r\r>")
+        assertEquals(294.0, decodedRail ?: 0.0, 0.01)
+
+        val rawIntConfig = LivePidConfig(
+            pidId = "DPF_DIFF",
+            displayName = "DPF Diff Pressure",
+            command = "017A",
+            responsePrefix = "417A",
+            unit = "mbar",
+            formulaType = "RAW_INT"
+        )
+        val decodedRaw = engine.decodeSensorValue(rawIntConfig, "41 7A 00 2D\r\r>")
+        assertEquals(45.0, decodedRaw ?: 0.0, 0.01)
     }
 
     @Test

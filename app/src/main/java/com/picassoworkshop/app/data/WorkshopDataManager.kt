@@ -4,6 +4,7 @@ import android.content.Context
 import com.picassoworkshop.app.data.model.RepairProcedure
 import com.picassoworkshop.app.data.model.VehicleSelection
 import com.picassoworkshop.app.data.model.WorkshopContentPackage
+import com.picassoworkshop.app.dashboard.model.toPidMetadata
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
@@ -74,7 +75,12 @@ class WorkshopDataManager(private val context: Context) {
 
                 val pkg = json.decodeFromString<WorkshopContentPackage>(jsonString)
                 _contentPackage.value = pkg
-                Timber.d("Workshop data loaded: version ${pkg.dataVersion}, ${pkg.procedures.size} procedures")
+                if (pkg.livePids.isNotEmpty()) {
+                    com.picassoworkshop.app.dashboard.model.PidCatalog.updateFromDataRepository(
+                        pkg.livePids.map { it.toPidMetadata() }
+                    )
+                }
+                Timber.d("Workshop data loaded: version ${pkg.dataVersion}, ${pkg.procedures.size} procedures, ${pkg.livePids.size} sensor pointers")
             } catch (e: Throwable) {
                 Timber.e(e, "Failed to load workshop data package")
             }
@@ -105,6 +111,14 @@ class WorkshopDataManager(private val context: Context) {
     }
 
     fun getLivePids(): List<com.picassoworkshop.app.data.model.LivePidConfig> {
+        return _contentPackage.value.livePids
+    }
+
+    fun getSensorPointer(pidId: String): com.picassoworkshop.app.data.model.LivePidConfig? {
+        return _contentPackage.value.livePids.firstOrNull { it.pidId.equals(pidId, ignoreCase = true) }
+    }
+
+    fun getSensorPointers(): List<com.picassoworkshop.app.data.model.LivePidConfig> {
         return _contentPackage.value.livePids
     }
 
@@ -174,6 +188,11 @@ class WorkshopDataManager(private val context: Context) {
                 }
 
                 _contentPackage.value = newPackage
+                if (newPackage.livePids.isNotEmpty()) {
+                    com.picassoworkshop.app.dashboard.model.PidCatalog.updateFromDataRepository(
+                        newPackage.livePids.map { it.toPidMetadata() }
+                    )
+                }
                 _updateState.value = DataUpdateState.Updated(newPackage.dataVersion)
                 Timber.d("Successfully hot-reloaded workshop data to version: ${newPackage.dataVersion}")
             } catch (e: Throwable) {

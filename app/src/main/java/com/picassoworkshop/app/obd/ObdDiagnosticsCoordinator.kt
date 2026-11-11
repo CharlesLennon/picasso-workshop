@@ -226,9 +226,7 @@ class ObdDiagnosticsCoordinator(
         if (telemetryJob?.isActive == true) return
 
         telemetryJob = scope.launch {
-            // Restore generic broadcast header for PIDs
-            connectionManager.sendCommand("ATSH 7DF")
-
+            var currentHeader = ""
             var simCounter = 0
 
             while (isActive) {
@@ -244,68 +242,56 @@ class ObdDiagnosticsCoordinator(
                     val simThrottle = (18 + (Math.sin(simPhase * Math.PI * 2) * 12)).toInt()
                     val simMaf = (12.4f + (Math.sin(simPhase * Math.PI * 2) * 15.0f)).toFloat()
 
-                    // Battery Voltage
-                    val vRaw = connectionManager.sendCommand("ATRV", timeoutMs = 600)
-                    val volts = protocolEngine.parseBatteryVoltage(vRaw)
+                    val sensorValuesMap = mutableMapOf<String, Double>()
+                    val sensorPointers = dataManager.getLivePids()
 
-                    // Coolant Temp
-                    val cRaw = connectionManager.sendCommand("0105", timeoutMs = 600)
-                    val coolant = protocolEngine.parseCoolantTemp(cRaw)
+                    for (sensor in sensorPointers) {
+                        val header = sensor.ecuHeader.ifBlank { "7DF" }
+                        if (header != currentHeader && !connectionManager.isSimulationMode) {
+                            connectionManager.sendCommand("ATSH $header")
+                            currentHeader = header
+                        }
 
-                    // RPM
-                    val rpmRaw = connectionManager.sendCommand("010C", timeoutMs = 600)
-                    val rpm = protocolEngine.parseRpm(rpmRaw)
-
-                    // Speed
-                    val spdRaw = connectionManager.sendCommand("010D", timeoutMs = 600)
-                    val speed = protocolEngine.parseSpeed(spdRaw)
-
-                    // Boost
-                    val bRaw = connectionManager.sendCommand("010B", timeoutMs = 600)
-                    val boost = protocolEngine.parseBoostPressure(bRaw)
-
-                    // Rail Pressure
-                    val rRaw = connectionManager.sendCommand("0123", timeoutMs = 600)
-                    val rail = protocolEngine.parseRailPressure(rRaw)
-
-                    // Intake Air Temp
-                    val iatRaw = connectionManager.sendCommand("010F", timeoutMs = 600)
-                    val iat = protocolEngine.parseIntakeAirTemp(iatRaw)
-
-                    // Engine Load
-                    val loadRaw = connectionManager.sendCommand("0104", timeoutMs = 600)
-                    val load = protocolEngine.parseEngineLoad(loadRaw)
-
-                    // Throttle
-                    val throtRaw = connectionManager.sendCommand("0111", timeoutMs = 600)
-                    val throttle = protocolEngine.parseThrottlePos(throtRaw)
-
-                    // Fuel Level
-                    val fuelRaw = connectionManager.sendCommand("012F", timeoutMs = 600)
-                    val fuel = protocolEngine.parseFuelLevel(fuelRaw)
-
-                    // MAF
-                    val mafRaw = connectionManager.sendCommand("0110", timeoutMs = 600)
-                    val maf = protocolEngine.parseMafRate(mafRaw)
-
-                    // Oil Temp
-                    val oilRaw = connectionManager.sendCommand("015C", timeoutMs = 600)
-                    val oil = protocolEngine.parseOilTemp(oilRaw)
+                        val raw = connectionManager.sendCommand(sensor.command, timeoutMs = 600)
+                        val decoded = protocolEngine.decodeSensorValue(sensor, raw)
+                        if (decoded != null && decoded > 0.0) {
+                            sensorValuesMap[sensor.pidId] = decoded
+                        } else if (connectionManager.isSimulationMode) {
+                            val simVal = when (sensor.pidId) {
+                                "ENGINE_RPM" -> simRpm.toDouble()
+                                "SPEED_KMH" -> simSpeed.toDouble()
+                                "COOLANT_TEMP" -> 88.0
+                                "BATTERY_VOLTS" -> 14.2
+                                "BOOST_PRESSURE" -> simBoost.toDouble()
+                                "RAIL_PRESSURE" -> simRail.toDouble()
+                                "INTAKE_AIR_TEMP" -> 26.0
+                                "ENGINE_LOAD" -> simLoad.toDouble()
+                                "THROTTLE_POS" -> simThrottle.toDouble()
+                                "FUEL_LEVEL" -> 68.0
+                                "MAF_RATE" -> simMaf.toDouble()
+                                "OIL_TEMP" -> 91.0
+                                else -> 50.0
+                            }
+                            sensorValuesMap[sensor.pidId] = simVal
+                        }
+                    }
 
                     _liveTelemetry.value = LiveTelemetry(
-                        rpm = if (connectionManager.isSimulationMode && rpm == 0) simRpm else rpm,
-                        speedKmh = if (connectionManager.isSimulationMode && speed == 0) simSpeed else speed,
-                        coolantTempC = if (connectionManager.isSimulationMode && coolant == 0) 88 else coolant,
-                        batteryVoltage = if (connectionManager.isSimulationMode && volts == 0f) 14.2f else volts,
-                        boostPressureBar = if (connectionManager.isSimulationMode && boost == 0f) simBoost else boost,
-                        railPressureBar = if (connectionManager.isSimulationMode && rail == 0) simRail else rail,
-                        intakeAirTempC = if (connectionManager.isSimulationMode && iat == 0) 24 else iat,
-                        engineLoadPercent = if (connectionManager.isSimulationMode && load == 0f) simLoad else load.toInt(),
-                        throttlePercent = if (connectionManager.isSimulationMode && throttle == 0f) simThrottle else throttle.toInt(),
-                        fuelLevelPercent = if (connectionManager.isSimulationMode && fuel == 0f) 68 else fuel.toInt(),
-                        mafRateGps = if (connectionManager.isSimulationMode && maf == 0f) simMaf else maf,
-                        oilTempC = if (connectionManager.isSimulationMode && oil == 0) 91 else oil,
-                        isEngineRunning = (rpm > 400 || connectionManager.isSimulationMode)
+                        rpm = (sensorValuesMap["ENGINE_RPM"] ?: 0.0).toInt(),
+                        speedKmh = (sensorValuesMap["SPEED_KMH"] ?: 0.0).toInt(),
+                        coolantTempC = (sensorValuesMap["COOLANT_TEMP"] ?: 0.0).toInt(),
+                        batteryVoltage = (sensorValuesMap["BATTERY_VOLTS"] ?: 0.0).toFloat(),
+                        boostPressureBar = (sensorValuesMap["BOOST_PRESSURE"] ?: 0.0).toFloat(),
+                        railPressureBar = (sensorValuesMap["RAIL_PRESSURE"] ?: 0.0).toInt(),
+                        intakeAirTempC = (sensorValuesMap["INTAKE_AIR_TEMP"] ?: 0.0).toInt(),
+                        engineLoadPercent = (sensorValuesMap["ENGINE_LOAD"] ?: 0.0).toInt(),
+                        throttlePercent = (sensorValuesMap["THROTTLE_POS"] ?: 0.0).toInt(),
+                        fuelLevelPercent = (sensorValuesMap["FUEL_LEVEL"] ?: 0.0).toInt(),
+                        mafRateGps = (sensorValuesMap["MAF_RATE"] ?: 0.0).toFloat(),
+                        oilTempC = (sensorValuesMap["OIL_TEMP"] ?: 0.0).toInt(),
+                        isEngineRunning = ((sensorValuesMap["ENGINE_RPM"] ?: 0.0) > 400.0 || connectionManager.isSimulationMode),
+                        sensorValues = sensorValuesMap,
+                        customPidValues = sensorValuesMap
                     )
 
                 } catch (e: Exception) {

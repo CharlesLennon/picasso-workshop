@@ -52,9 +52,13 @@ data class LiveTelemetry(
     val oilTempC: Int = 0,
     val isEngineRunning: Boolean = false,
     val lastUpdatedTimestamp: Long = System.currentTimeMillis(),
+    val sensorValues: Map<String, Double> = emptyMap(),
     val customPidValues: Map<String, Double> = emptyMap()
 ) {
     fun getValueForPid(pidId: String): Double {
+        sensorValues[pidId]?.let { return it }
+        customPidValues[pidId]?.let { return it }
+
         return when (pidId) {
             "ENGINE_RPM" -> rpm.toDouble()
             "SPEED_KMH" -> speedKmh.toDouble()
@@ -68,7 +72,7 @@ data class LiveTelemetry(
             "FUEL_LEVEL" -> fuelLevelPercent.toDouble()
             "MAF_RATE" -> mafRateGps.toDouble()
             "OIL_TEMP" -> oilTempC.toDouble()
-            else -> customPidValues[pidId] ?: 0.0
+            else -> 0.0
         }
     }
 }
