@@ -156,8 +156,7 @@ fun ProcedureDetailScreen(
     onBackClick: () -> Unit
 ) {
     var completedSteps by remember { mutableStateOf(setOf<Int>()) }
-    var showSafetyNotes by remember { mutableStateOf(procedure.safetyNotes.isNotEmpty()) }
-    var showToolsSection by remember { mutableStateOf(true) }
+    var selectedBottomTab by remember { mutableIntStateOf(0) } // 0: Steps, 1: Tools & Bits, 2: Safety & Torque
 
     // Tools & Bits state
     val allToolsAndBits = remember(procedure) { extractToolsAndBits(procedure) }
@@ -232,215 +231,387 @@ fun ProcedureDetailScreen(
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = WorkshopSurface)
             )
         },
-        containerColor = WorkshopBackground
-    ) { paddingValues ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            // 1. Procedure Overview Card
-            item {
-                ProcedureOverviewHeader(
-                    procedure = procedure,
-                    completedCount = completedSteps.size,
-                    totalCount = procedure.steps.size
+        bottomBar = {
+            NavigationBar(
+                containerColor = WorkshopSurfaceElevated,
+                contentColor = TextPrimary,
+                tonalElevation = 8.dp
+            ) {
+                // Tab 0: STEPS
+                NavigationBarItem(
+                    selected = selectedBottomTab == 0,
+                    onClick = { selectedBottomTab = 0 },
+                    icon = {
+                        BadgedBox(
+                            badge = {
+                                if (completedSteps.isNotEmpty()) {
+                                    Badge(containerColor = MintGreen) {
+                                        Text("${completedSteps.size}/${procedure.steps.size}", fontSize = 9.sp, color = DarkBackground)
+                                    }
+                                }
+                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.FormatListNumbered,
+                                contentDescription = "Steps"
+                            )
+                        }
+                    },
+                    label = {
+                        Text(
+                            text = "STEPS",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace
+                        )
+                    },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = CitroenRed,
+                        selectedTextColor = CitroenRed,
+                        indicatorColor = CitroenRed.copy(alpha = 0.15f),
+                        unselectedIconColor = TextSecondary,
+                        unselectedTextColor = TextSecondary
+                    )
+                )
+
+                // Tab 1: TOOLS & BITS
+                NavigationBarItem(
+                    selected = selectedBottomTab == 1,
+                    onClick = { selectedBottomTab = 1 },
+                    icon = {
+                        BadgedBox(
+                            badge = {
+                                if (allToolsAndBits.isNotEmpty()) {
+                                    Badge(
+                                        containerColor = if (trayCheckedIds.size == allToolsAndBits.size) MintGreen else CyanAccent
+                                    ) {
+                                        Text("${trayCheckedIds.size}/${allToolsAndBits.size}", fontSize = 9.sp, color = DarkBackground)
+                                    }
+                                }
+                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Handyman,
+                                contentDescription = "Tools & Bits"
+                            )
+                        }
+                    },
+                    label = {
+                        Text(
+                            text = "TOOLS & BITS",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace
+                        )
+                    },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = CyanAccent,
+                        selectedTextColor = CyanAccent,
+                        indicatorColor = CyanAccent.copy(alpha = 0.15f),
+                        unselectedIconColor = TextSecondary,
+                        unselectedTextColor = TextSecondary
+                    )
+                )
+
+                // Tab 2: SAFETY & TORQUE
+                NavigationBarItem(
+                    selected = selectedBottomTab == 2,
+                    onClick = { selectedBottomTab = 2 },
+                    icon = {
+                        BadgedBox(
+                            badge = {
+                                if (procedure.torqueSpecs.isNotEmpty()) {
+                                    Badge(containerColor = GoldenBolt) {
+                                        Text("${procedure.torqueSpecs.size}", fontSize = 9.sp, color = DarkBackground)
+                                    }
+                                }
+                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Security,
+                                contentDescription = "Safety & Torque"
+                            )
+                        }
+                    },
+                    label = {
+                        Text(
+                            text = "SAFETY & TORQUE",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace
+                        )
+                    },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = GoldenBolt,
+                        selectedTextColor = GoldenBolt,
+                        indicatorColor = GoldenBolt.copy(alpha = 0.15f),
+                        unselectedIconColor = TextSecondary,
+                        unselectedTextColor = TextSecondary
+                    )
                 )
             }
+        },
+        containerColor = WorkshopBackground
+    ) { paddingValues ->
+        when (selectedBottomTab) {
+            0 -> {
+                // Tab 0: STEPS
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    // 1. Procedure Overview Card
+                    item {
+                        ProcedureOverviewHeader(
+                            procedure = procedure,
+                            completedCount = completedSteps.size,
+                            totalCount = procedure.steps.size,
+                            toolsCount = allToolsAndBits.size,
+                            onNavigateToTools = { selectedBottomTab = 1 },
+                            onNavigateToSafetyTorque = { selectedBottomTab = 2 }
+                        )
+                    }
 
-            // 2. Critical Safety Instructions Banner (Collapsible)
-            if (procedure.safetyNotes.isNotEmpty()) {
-                item {
-                    SafetyNotesBanner(
-                        safetyNotes = procedure.safetyNotes,
-                        isExpanded = showSafetyNotes,
-                        onToggle = { showSafetyNotes = !showSafetyNotes }
-                    )
-                }
-            }
+                    // 2. Active Tool Filter Banner (when filtering steps by a specific tool/bit)
+                    if (activeToolOrBitFilter != null) {
+                        item {
+                            ActiveToolFilterBanner(
+                                activeTool = activeToolOrBitFilter!!,
+                                displayedCount = displayedSteps.size,
+                                totalCount = procedure.steps.size,
+                                onClearFilter = { activeToolOrBitFilter = null },
+                                onViewToolsTab = { selectedBottomTab = 1 }
+                            )
+                        }
+                    }
 
-            // 3. Dedicated Tools & Bits Needed Filter List
-            if (allToolsAndBits.isNotEmpty()) {
-                item {
-                    ToolsAndBitsFilterSection(
-                        toolsAndBits = allToolsAndBits,
-                        activeFilter = activeToolOrBitFilter,
-                        onSelectFilter = { selected ->
-                            activeToolOrBitFilter = if (activeToolOrBitFilter?.id == selected?.id) null else selected
-                        },
-                        searchQuery = toolsSearchQuery,
-                        onSearchQueryChange = { toolsSearchQuery = it },
-                        selectedCategory = selectedToolCategory,
-                        onCategorySelect = { selectedToolCategory = it },
-                        trayCheckedIds = trayCheckedIds,
-                        onToggleTrayItem = { id ->
-                            trayCheckedIds = if (trayCheckedIds.contains(id)) {
-                                trayCheckedIds - id
-                            } else {
-                                trayCheckedIds + id
-                            }
-                        },
-                        isExpanded = showToolsSection,
-                        onToggleExpand = { showToolsSection = !showToolsSection }
-                    )
-                }
-            }
-
-            // 4. Active Tool Filter Banner (when filtering steps by a specific tool/bit)
-            if (activeToolOrBitFilter != null) {
-                item {
-                    Surface(
-                        color = CyanAccent.copy(alpha = 0.15f),
-                        shape = RoundedCornerShape(12.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, CyanAccent),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
+                    // 3. Section Title: Step-by-Step Infographs
+                    item {
                         Row(
-                            modifier = Modifier.padding(14.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 4.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                modifier = Modifier.weight(1f)
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 Surface(
-                                    color = CyanAccent,
-                                    shape = CircleShape,
-                                    modifier = Modifier.size(30.dp)
-                                ) {
-                                    Box(contentAlignment = Alignment.Center) {
-                                        Icon(
-                                            imageVector = Icons.Default.FilterList,
-                                            contentDescription = null,
-                                            tint = WorkshopBackground,
-                                            modifier = Modifier.size(18.dp)
-                                        )
-                                    }
-                                }
-                                Column {
-                                    Text(
-                                        text = "FILTERING STEPS BY TOOL / BIT",
-                                        color = CyanAccent,
-                                        fontSize = 10.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        fontFamily = FontFamily.Monospace,
-                                        letterSpacing = 0.5.sp
-                                    )
-                                    Text(
-                                        text = "${activeToolOrBitFilter!!.name} (${activeToolOrBitFilter!!.spec})",
-                                        color = TextPrimary,
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                    Text(
-                                        text = "Showing ${displayedSteps.size} of ${procedure.steps.size} steps",
-                                        color = TextSecondary,
-                                        fontSize = 11.sp,
-                                        fontFamily = FontFamily.Monospace
-                                    )
-                                }
-                            }
-
-                            TextButton(
-                                onClick = { activeToolOrBitFilter = null },
-                                colors = ButtonDefaults.textButtonColors(contentColor = MintGreen)
-                            ) {
+                                    color = CitroenRed,
+                                    shape = RoundedCornerShape(4.dp),
+                                    modifier = Modifier.size(width = 4.dp, height = 16.dp)
+                                ) {}
                                 Text(
-                                    text = "SHOW ALL",
+                                    text = if (activeToolOrBitFilter != null) {
+                                        "FILTERED REPAIR STEPS (${displayedSteps.size})"
+                                    } else {
+                                        "STEP-BY-STEP REPAIR INFOGRAPHS"
+                                    },
+                                    color = TextPrimary,
+                                    fontSize = 13.sp,
                                     fontWeight = FontWeight.Bold,
                                     fontFamily = FontFamily.Monospace,
-                                    fontSize = 11.sp
+                                    letterSpacing = 1.sp
+                                )
+                            }
+
+                            if (completedSteps.isNotEmpty()) {
+                                Text(
+                                    text = "Reset All",
+                                    color = TextSecondary,
+                                    fontSize = 11.sp,
+                                    fontFamily = FontFamily.Monospace,
+                                    modifier = Modifier.clickable { completedSteps = emptySet() }
                                 )
                             }
                         }
                     }
-                }
-            }
 
-            // 5. Section Title: Step-by-Step Infographs
-            item {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Surface(
-                            color = CitroenRed,
-                            shape = RoundedCornerShape(4.dp),
-                            modifier = Modifier.size(width = 4.dp, height = 16.dp)
-                        ) {}
-                        Text(
-                            text = if (activeToolOrBitFilter != null) {
-                                "FILTERED REPAIR STEPS (${displayedSteps.size})"
-                            } else {
-                                "STEP-BY-STEP REPAIR INFOGRAPHS"
+                    // 4. Individual Step-by-Step Infograph Cards
+                    itemsIndexed(displayedSteps, key = { _, step -> step.stepNumber }) { _, step ->
+                        val isCompleted = completedSteps.contains(step.stepNumber)
+                        val relevantTorque = procedure.torqueSpecs.firstOrNull { spec ->
+                            step.instructions.contains(spec.componentName, ignoreCase = true) ||
+                                    (step.tool != null && spec.fastenerSize.contains(step.tool.size, ignoreCase = true))
+                        }
+
+                        StepInfographCard(
+                            step = step,
+                            stepIndex = step.stepNumber,
+                            totalSteps = procedure.steps.size,
+                            isCompleted = isCompleted,
+                            matchedTorqueSpec = relevantTorque,
+                            onToggleComplete = {
+                                completedSteps = if (isCompleted) {
+                                    completedSteps - step.stepNumber
+                                } else {
+                                    completedSteps + step.stepNumber
+                                }
                             },
-                            color = TextPrimary,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = FontFamily.Monospace,
-                            letterSpacing = 1.sp
+                            onToolChipClick = { toolName ->
+                                val matched = allToolsAndBits.firstOrNull {
+                                    it.name.contains(toolName, ignoreCase = true) || toolName.contains(it.name, ignoreCase = true)
+                                }
+                                if (matched != null) {
+                                    activeToolOrBitFilter = if (activeToolOrBitFilter?.id == matched.id) null else matched
+                                }
+                            }
                         )
                     }
 
-                    if (completedSteps.isNotEmpty()) {
-                        Text(
-                            text = "Reset All",
-                            color = TextSecondary,
-                            fontSize = 11.sp,
-                            fontFamily = FontFamily.Monospace,
-                            modifier = Modifier.clickable { completedSteps = emptySet() }
-                        )
+                    // 5. Final Completion Card
+                    if (procedure.steps.isNotEmpty() && completedSteps.size == procedure.steps.size) {
+                        item {
+                            ProcedureCompletedCard(onReset = { completedSteps = emptySet() })
+                        }
                     }
                 }
             }
-
-            // 6. Individual Step-by-Step Infograph Cards
-            itemsIndexed(displayedSteps, key = { _, step -> step.stepNumber }) { _, step ->
-                val isCompleted = completedSteps.contains(step.stepNumber)
-                val relevantTorque = procedure.torqueSpecs.firstOrNull { spec ->
-                    step.instructions.contains(spec.componentName, ignoreCase = true) ||
-                            (step.tool != null && spec.fastenerSize.contains(step.tool.size, ignoreCase = true))
-                }
-
-                StepInfographCard(
-                    step = step,
-                    stepIndex = step.stepNumber,
-                    totalSteps = procedure.steps.size,
-                    isCompleted = isCompleted,
-                    matchedTorqueSpec = relevantTorque,
-                    onToggleComplete = {
-                        completedSteps = if (isCompleted) {
-                            completedSteps - step.stepNumber
+            1 -> {
+                // Tab 1: TOOLS & BITS
+                ToolsAndBitsTabContent(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
+                    toolsAndBits = allToolsAndBits,
+                    activeFilter = activeToolOrBitFilter,
+                    onSelectFilterAndNavigate = { selected ->
+                        activeToolOrBitFilter = selected
+                        selectedBottomTab = 0 // Switch to steps view
+                    },
+                    searchQuery = toolsSearchQuery,
+                    onSearchQueryChange = { toolsSearchQuery = it },
+                    selectedCategory = selectedToolCategory,
+                    onCategorySelect = { selectedToolCategory = it },
+                    trayCheckedIds = trayCheckedIds,
+                    onToggleTrayItem = { id ->
+                        trayCheckedIds = if (trayCheckedIds.contains(id)) {
+                            trayCheckedIds - id
                         } else {
-                            completedSteps + step.stepNumber
+                            trayCheckedIds + id
                         }
                     },
-                    onToolChipClick = { toolName ->
+                    onMarkAllTray = {
+                        trayCheckedIds = allToolsAndBits.map { it.id }.toSet()
+                    },
+                    onClearTray = {
+                        trayCheckedIds = emptySet()
+                    }
+                )
+            }
+            2 -> {
+                // Tab 2: SAFETY & TORQUE
+                SafetyAndTorqueTabContent(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
+                    safetyNotes = procedure.safetyNotes,
+                    torqueSpecs = procedure.torqueSpecs,
+                    onTorqueSpecClick = { torqueSpec ->
                         val matched = allToolsAndBits.firstOrNull {
-                            it.name.contains(toolName, ignoreCase = true) || toolName.contains(it.name, ignoreCase = true)
+                            it.name.contains(torqueSpec.componentName, ignoreCase = true) ||
+                                    torqueSpec.componentName.contains(it.name, ignoreCase = true)
                         }
                         if (matched != null) {
-                            activeToolOrBitFilter = if (activeToolOrBitFilter?.id == matched.id) null else matched
+                            activeToolOrBitFilter = matched
+                            selectedBottomTab = 0
                         }
                     }
                 )
             }
+        }
+    }
+}
 
-            // 7. Final Completion Card
-            if (procedure.steps.isNotEmpty() && completedSteps.size == procedure.steps.size) {
-                item {
-                    ProcedureCompletedCard(onReset = { completedSteps = emptySet() })
+@Composable
+private fun ActiveToolFilterBanner(
+    activeTool: ToolOrBit,
+    displayedCount: Int,
+    totalCount: Int,
+    onClearFilter: () -> Unit,
+    onViewToolsTab: () -> Unit
+) {
+    Surface(
+        color = CyanAccent.copy(alpha = 0.15f),
+        shape = RoundedCornerShape(12.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, CyanAccent),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.padding(14.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.weight(1f)
+            ) {
+                Surface(
+                    color = CyanAccent,
+                    shape = CircleShape,
+                    modifier = Modifier.size(30.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Default.FilterList,
+                            contentDescription = null,
+                            tint = DarkBackground,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+                Column {
+                    Text(
+                        text = "FILTERING STEPS BY TOOL / BIT",
+                        color = CyanAccent,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace,
+                        letterSpacing = 0.5.sp
+                    )
+                    Text(
+                        text = "${activeTool.name} (${activeTool.spec})",
+                        color = TextPrimary,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Showing $displayedCount of $totalCount steps",
+                        color = TextSecondary,
+                        fontSize = 11.sp,
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
+            }
+
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                TextButton(
+                    onClick = onViewToolsTab,
+                    colors = ButtonDefaults.textButtonColors(contentColor = CyanAccent)
+                ) {
+                    Text(
+                        text = "TOOLS TAB",
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 11.sp
+                    )
+                }
+                TextButton(
+                    onClick = onClearFilter,
+                    colors = ButtonDefaults.textButtonColors(contentColor = MintGreen)
+                ) {
+                    Text(
+                        text = "SHOW ALL",
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 11.sp
+                    )
                 }
             }
         }
@@ -448,101 +619,157 @@ fun ProcedureDetailScreen(
 }
 
 /**
- * Dedicated Tools & Bits Filter Section.
- * Displays an inventory checklist with categorization, real-time search,
+ * Dedicated Tools & Bits Tab Content.
+ * Displays a full-screen inventory checklist with categorization, real-time search,
  * "In Tray" readiness tracking, and direct step-filtering triggers.
  */
 @Composable
-fun ToolsAndBitsFilterSection(
+fun ToolsAndBitsTabContent(
+    modifier: Modifier = Modifier,
     toolsAndBits: List<ToolOrBit>,
     activeFilter: ToolOrBit?,
-    onSelectFilter: (ToolOrBit?) -> Unit,
+    onSelectFilterAndNavigate: (ToolOrBit?) -> Unit,
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,
     selectedCategory: ToolOrBitType,
     onCategorySelect: (ToolOrBitType) -> Unit,
     trayCheckedIds: Set<String>,
     onToggleTrayItem: (String) -> Unit,
-    isExpanded: Boolean,
-    onToggleExpand: () -> Unit
+    onMarkAllTray: () -> Unit,
+    onClearTray: () -> Unit
 ) {
-    Surface(
-        color = WorkshopSurface,
-        shape = RoundedCornerShape(14.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, WorkshopBorder),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(modifier = Modifier.padding(14.dp)) {
-            // Header: Title, Tray Progress & Expand/Collapse Toggle
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onToggleExpand() },
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Handyman,
-                        contentDescription = null,
-                        tint = CyanAccent,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Column {
-                        Text(
-                            text = "TOOLS & BITS NEEDED FILTER LIST",
-                            color = CyanAccent,
-                            fontSize = 11.5.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = FontFamily.Monospace,
-                            letterSpacing = 0.5.sp
-                        )
-                        Text(
-                            text = "${toolsAndBits.size} items required • ${trayCheckedIds.size}/${toolsAndBits.size} ready in tray",
-                            color = if (trayCheckedIds.size == toolsAndBits.size && toolsAndBits.isNotEmpty()) MintGreen else TextSecondary,
-                            fontSize = 10.5.sp,
-                            fontFamily = FontFamily.Monospace
-                        )
-                    }
-                }
+    val filteredItems = remember(toolsAndBits, searchQuery, selectedCategory) {
+        toolsAndBits.filter { item ->
+            val matchesCategory = selectedCategory == ToolOrBitType.ALL || item.category == selectedCategory
+            val matchesSearch = searchQuery.isBlank() ||
+                    item.name.contains(searchQuery, ignoreCase = true) ||
+                    item.spec.contains(searchQuery, ignoreCase = true) ||
+                    (item.oemPartNumber != null && item.oemPartNumber.contains(searchQuery, ignoreCase = true))
+            matchesCategory && matchesSearch
+        }
+    }
 
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    if (activeFilter != null) {
-                        Surface(
-                            color = CyanAccent.copy(alpha = 0.2f),
-                            shape = RoundedCornerShape(10.dp),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, CyanAccent)
+    LazyColumn(
+        modifier = modifier,
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        // 1. Tool Tray Readiness Header Card
+        item {
+            Surface(
+                color = WorkshopSurface,
+                shape = RoundedCornerShape(14.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, WorkshopBorder),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            Text(
-                                text = "1 FILTER ACTIVE",
-                                color = CyanAccent,
-                                fontSize = 9.sp,
-                                fontWeight = FontWeight.Bold,
-                                fontFamily = FontFamily.Monospace,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                            )
+                            Surface(
+                                color = CyanAccent.copy(alpha = 0.15f),
+                                shape = CircleShape,
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Default.Handyman,
+                                        contentDescription = null,
+                                        tint = CyanAccent,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+                            Column {
+                                Text(
+                                    text = "WORKSHOP TOOL TRAY & BITS",
+                                    color = CyanAccent,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = FontFamily.Monospace,
+                                    letterSpacing = 0.5.sp
+                                )
+                                Text(
+                                    text = "${toolsAndBits.size} items needed • ${trayCheckedIds.size}/${toolsAndBits.size} ready in tray",
+                                    color = if (trayCheckedIds.size == toolsAndBits.size && toolsAndBits.isNotEmpty()) MintGreen else TextSecondary,
+                                    fontSize = 11.sp,
+                                    fontFamily = FontFamily.Monospace
+                                )
+                            }
+                        }
+
+                        if (activeFilter != null) {
+                            Surface(
+                                color = CyanAccent.copy(alpha = 0.2f),
+                                shape = RoundedCornerShape(8.dp),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, CyanAccent)
+                            ) {
+                                Text(
+                                    text = "FILTER ACTIVE",
+                                    color = CyanAccent,
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = FontFamily.Monospace,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
                         }
                     }
 
-                    Icon(
-                        imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                        contentDescription = null,
-                        tint = TextSecondary,
-                        modifier = Modifier.size(20.dp)
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    val trayProgress = if (toolsAndBits.isNotEmpty()) trayCheckedIds.size.toFloat() / toolsAndBits.size else 0f
+                    LinearProgressIndicator(
+                        progress = { trayProgress },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(6.dp)
+                            .clip(RoundedCornerShape(3.dp)),
+                        color = if (trayProgress == 1f) MintGreen else CyanAccent,
+                        trackColor = WorkshopBorder
                     )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Check items off as you lay them into your workspace tray:",
+                            color = TextSecondary,
+                            fontSize = 11.sp,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            TextButton(
+                                onClick = onMarkAllTray,
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                            ) {
+                                Text("ALL READY", fontSize = 10.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, color = MintGreen)
+                            }
+                            TextButton(
+                                onClick = onClearTray,
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                            ) {
+                                Text("RESET", fontSize = 10.sp, fontFamily = FontFamily.Monospace, color = TextSecondary)
+                            }
+                        }
+                    }
                 }
             }
+        }
 
-            if (isExpanded) {
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Search Bar for Tools & Bits
+        // 2. Search & Category Controls
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = onSearchQueryChange,
@@ -577,16 +804,14 @@ fun ToolsAndBitsFilterSection(
                     singleLine = true,
                     shape = RoundedCornerShape(10.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = WorkshopBackground,
-                        unfocusedContainerColor = WorkshopBackground,
+                        focusedContainerColor = WorkshopSurface,
+                        unfocusedContainerColor = WorkshopSurface,
                         focusedBorderColor = CyanAccent,
                         unfocusedBorderColor = WorkshopBorder,
                         focusedTextColor = TextPrimary,
                         unfocusedTextColor = TextPrimary
                     )
                 )
-
-                Spacer(modifier = Modifier.height(10.dp))
 
                 // Category Filter Chips Row
                 Row(
@@ -621,12 +846,12 @@ fun ToolsAndBitsFilterSection(
                                     Icon(
                                         imageVector = cat.icon,
                                         contentDescription = null,
-                                        tint = if (isSelected) WorkshopBackground else TextSecondary,
+                                        tint = if (isSelected) DarkBackground else TextSecondary,
                                         modifier = Modifier.size(13.dp)
                                     )
                                     Text(
                                         text = "${cat.label.uppercase()} ($count)",
-                                        color = if (isSelected) WorkshopBackground else TextSecondary,
+                                        color = if (isSelected) DarkBackground else TextSecondary,
                                         fontSize = 10.sp,
                                         fontWeight = FontWeight.Bold,
                                         fontFamily = FontFamily.Monospace
@@ -636,168 +861,199 @@ fun ToolsAndBitsFilterSection(
                         }
                     }
                 }
+            }
+        }
 
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Filtered List of Tools and Bits
-                val filteredItems = toolsAndBits.filter { item ->
-                    val matchesCategory = selectedCategory == ToolOrBitType.ALL || item.category == selectedCategory
-                    val matchesSearch = searchQuery.isBlank() ||
-                            item.name.contains(searchQuery, ignoreCase = true) ||
-                            item.spec.contains(searchQuery, ignoreCase = true) ||
-                            (item.oemPartNumber != null && item.oemPartNumber.contains(searchQuery, ignoreCase = true))
-                    matchesCategory && matchesSearch
-                }
-
-                if (filteredItems.isEmpty()) {
+        // 3. Items List
+        if (filteredItems.isEmpty()) {
+            item {
+                Surface(
+                    color = WorkshopSurface,
+                    shape = RoundedCornerShape(12.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, WorkshopBorder),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
                     Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 14.dp),
+                        modifier = Modifier.padding(24.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "No tools or bits match the active filter",
+                            text = "No tools or bits match the current filter.",
                             color = TextSecondary,
                             fontSize = 12.sp,
                             fontFamily = FontFamily.Monospace
                         )
                     }
-                } else {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        filteredItems.forEach { item ->
-                            val isFilteringThis = activeFilter?.id == item.id
-                            val isInTray = trayCheckedIds.contains(item.id)
+                }
+            }
+        } else {
+            items(filteredItems.size, key = { filteredItems[it].id }) { idx ->
+                val item = filteredItems[idx]
+                val isInTray = trayCheckedIds.contains(item.id)
+                val isFilteringThis = activeFilter?.id == item.id
 
+                Surface(
+                    color = if (isFilteringThis) CyanAccent.copy(alpha = 0.12f) else WorkshopSurface,
+                    shape = RoundedCornerShape(10.dp),
+                    border = androidx.compose.foundation.BorderStroke(
+                        width = 1.dp,
+                        color = if (isFilteringThis) CyanAccent else if (isInTray) MintGreen.copy(alpha = 0.4f) else WorkshopBorder
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        // Left: Tray Checkbox + Icon + Details
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            // Tray Checkbox
                             Surface(
-                                color = if (isFilteringThis) CyanAccent.copy(alpha = 0.12f) else WorkshopBackground,
-                                shape = RoundedCornerShape(10.dp),
+                                color = if (isInTray) MintGreen else WorkshopBackground,
+                                shape = RoundedCornerShape(6.dp),
                                 border = androidx.compose.foundation.BorderStroke(
-                                    width = if (isFilteringThis) 1.5.dp else 1.dp,
-                                    color = if (isFilteringThis) CyanAccent else WorkshopBorder
+                                    1.dp,
+                                    if (isInTray) MintGreen else TextSecondary.copy(alpha = 0.5f)
                                 ),
-                                modifier = Modifier.fillMaxWidth()
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .clickable { onToggleTrayItem(item.id) }
                             ) {
-                                Row(
-                                    modifier = Modifier.padding(10.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    // Left: In-Tray Checkbox & Icon
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                        modifier = Modifier.weight(1f)
-                                    ) {
-                                        IconButton(
-                                            onClick = { onToggleTrayItem(item.id) },
-                                            modifier = Modifier.size(28.dp)
-                                        ) {
-                                            Icon(
-                                                imageVector = if (isInTray) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
-                                                contentDescription = "In Tray",
-                                                tint = if (isInTray) MintGreen else TextSecondary,
-                                                modifier = Modifier.size(20.dp)
-                                            )
-                                        }
-
-                                        Column {
-                                            Row(
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                            ) {
-                                                Text(
-                                                    text = item.name,
-                                                    color = if (isInTray) TextSecondary else TextPrimary,
-                                                    fontSize = 12.5.sp,
-                                                    fontWeight = FontWeight.Bold
-                                                )
-                                                if (item.isCrucial) {
-                                                    Surface(
-                                                        color = CitroenRed.copy(alpha = 0.15f),
-                                                        shape = RoundedCornerShape(3.dp)
-                                                    ) {
-                                                        Text(
-                                                            text = "CRUCIAL",
-                                                            color = CitroenRed,
-                                                            fontSize = 8.5.sp,
-                                                            fontWeight = FontWeight.Bold,
-                                                            fontFamily = FontFamily.Monospace,
-                                                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
-                                                        )
-                                                    }
-                                                }
-                                            }
-
-                                            Row(
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                            ) {
-                                                Text(
-                                                    text = "Spec: ${item.spec}",
-                                                    color = CyanAccent,
-                                                    fontSize = 11.sp,
-                                                    fontFamily = FontFamily.Monospace,
-                                                    fontWeight = FontWeight.Medium
-                                                )
-                                                if (item.torqueNm != null) {
-                                                    Surface(
-                                                        color = GoldenBolt.copy(alpha = 0.15f),
-                                                        shape = RoundedCornerShape(3.dp)
-                                                    ) {
-                                                        Text(
-                                                            text = "${item.torqueNm} Nm",
-                                                            color = GoldenBolt,
-                                                            fontSize = 9.sp,
-                                                            fontWeight = FontWeight.Bold,
-                                                            fontFamily = FontFamily.Monospace,
-                                                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
-                                                        )
-                                                    }
-                                                }
-                                                if (item.stepNumbers.isNotEmpty()) {
-                                                    Text(
-                                                        text = "• Steps: ${item.stepNumbers.joinToString()}",
-                                                        color = TextSecondary,
-                                                        fontSize = 10.5.sp,
-                                                        fontFamily = FontFamily.Monospace
-                                                    )
-                                                }
-                                            }
-                                        }
+                                Box(contentAlignment = Alignment.Center) {
+                                    if (isInTray) {
+                                        Icon(
+                                            imageVector = Icons.Default.Check,
+                                            contentDescription = "In Tray",
+                                            tint = DarkBackground,
+                                            modifier = Modifier.size(16.dp)
+                                        )
                                     }
+                                }
+                            }
 
-                                    // Right: Step-Filter Trigger Button
-                                    Surface(
-                                        shape = RoundedCornerShape(6.dp),
-                                        color = if (isFilteringThis) CyanAccent else WorkshopSurfaceElevated,
-                                        border = androidx.compose.foundation.BorderStroke(
-                                            1.dp,
-                                            if (isFilteringThis) CyanAccent else WorkshopBorder
-                                        ),
-                                        modifier = Modifier.clickable { onSelectFilter(item) }
-                                    ) {
-                                        Row(
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            // Category Icon
+                            Surface(
+                                color = BlueprintGrid.copy(alpha = 0.4f),
+                                shape = CircleShape,
+                                modifier = Modifier.size(30.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = item.category.icon,
+                                        contentDescription = null,
+                                        tint = if (isInTray) MintGreen else CyanAccent,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            }
+
+                            // Info details
+                            Column(modifier = Modifier.weight(1f)) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Text(
+                                        text = item.name,
+                                        color = if (isInTray) TextPrimary else TextPrimary.copy(alpha = 0.9f),
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    if (item.spec.isNotBlank()) {
+                                        Surface(
+                                            color = WorkshopSurfaceElevated,
+                                            shape = RoundedCornerShape(4.dp),
+                                            border = androidx.compose.foundation.BorderStroke(0.5.dp, WorkshopBorder)
                                         ) {
-                                            Icon(
-                                                imageVector = if (isFilteringThis) Icons.Default.FilterListOff else Icons.Default.FilterList,
-                                                contentDescription = null,
-                                                tint = if (isFilteringThis) WorkshopBackground else CyanAccent,
-                                                modifier = Modifier.size(12.dp)
-                                            )
                                             Text(
-                                                text = if (isFilteringThis) "FILTERING" else "FILTER",
-                                                color = if (isFilteringThis) WorkshopBackground else CyanAccent,
-                                                fontSize = 9.5.sp,
+                                                text = item.spec,
+                                                color = CyanAccent,
+                                                fontSize = 10.sp,
                                                 fontWeight = FontWeight.Bold,
-                                                fontFamily = FontFamily.Monospace
+                                                fontFamily = FontFamily.Monospace,
+                                                modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
                                             )
                                         }
                                     }
                                 }
+
+                                Spacer(modifier = Modifier.height(3.dp))
+
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    if (item.oemPartNumber != null) {
+                                        Text(
+                                            text = "OEM: ${item.oemPartNumber}",
+                                            color = TextSecondary,
+                                            fontSize = 10.sp,
+                                            fontFamily = FontFamily.Monospace
+                                        )
+                                    }
+                                    if (item.torqueNm != null) {
+                                        Surface(
+                                            color = GoldenBolt.copy(alpha = 0.15f),
+                                            shape = RoundedCornerShape(4.dp),
+                                            border = androidx.compose.foundation.BorderStroke(0.5.dp, GoldenBolt)
+                                        ) {
+                                            Text(
+                                                text = "${item.torqueNm} Nm",
+                                                color = GoldenBolt,
+                                                fontSize = 9.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                fontFamily = FontFamily.Monospace,
+                                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                            )
+                                        }
+                                    }
+                                    if (item.stepNumbers.isNotEmpty()) {
+                                        Text(
+                                            text = "• Steps: ${item.stepNumbers.joinToString()}",
+                                            color = TextSecondary,
+                                            fontSize = 10.5.sp,
+                                            fontFamily = FontFamily.Monospace
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        // Right: Filter Steps Action Button
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = if (isFilteringThis) CyanAccent else WorkshopSurfaceElevated,
+                            border = androidx.compose.foundation.BorderStroke(
+                                1.dp,
+                                if (isFilteringThis) CyanAccent else WorkshopBorder
+                            ),
+                            modifier = Modifier.clickable {
+                                onSelectFilterAndNavigate(if (isFilteringThis) null else item)
+                            }
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = if (isFilteringThis) Icons.Default.FilterListOff else Icons.Default.FilterList,
+                                    contentDescription = null,
+                                    tint = if (isFilteringThis) DarkBackground else CyanAccent,
+                                    modifier = Modifier.size(13.dp)
+                                )
+                                Text(
+                                    text = if (isFilteringThis) "ACTIVE" else "FILTER STEPS",
+                                    color = if (isFilteringThis) DarkBackground else CyanAccent,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = FontFamily.Monospace
+                                )
                             }
                         }
                     }
@@ -807,11 +1063,337 @@ fun ToolsAndBitsFilterSection(
     }
 }
 
+/**
+ * Dedicated Safety & Torque Tab Content.
+ * Displays mandatory workshop safety standards, procedure-specific cautions,
+ * and critical fastener torque specifications.
+ */
+@Composable
+fun SafetyAndTorqueTabContent(
+    modifier: Modifier = Modifier,
+    safetyNotes: List<String>,
+    torqueSpecs: List<TorqueSpec>,
+    onTorqueSpecClick: (TorqueSpec) -> Unit
+) {
+    LazyColumn(
+        modifier = modifier,
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // 1. Mandatory Workshop Safety Rules
+        item {
+            Surface(
+                color = CoralAlert.copy(alpha = 0.08f),
+                shape = RoundedCornerShape(14.dp),
+                border = androidx.compose.foundation.BorderStroke(1.5.dp, CoralAlert.copy(alpha = 0.7f)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Surface(
+                            color = CoralAlert,
+                            shape = CircleShape,
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.Warning,
+                                    contentDescription = null,
+                                    tint = DarkBackground,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+
+                        Column {
+                            Text(
+                                text = "MANDATORY WORKSHOP SAFETY RULES",
+                                color = CoralAlert,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Black,
+                                fontFamily = FontFamily.Monospace,
+                                letterSpacing = 0.5.sp
+                            )
+                            Text(
+                                text = "PSA Peugeot Citroën Workshop Standards",
+                                color = TextSecondary,
+                                fontSize = 10.5.sp,
+                                fontFamily = FontFamily.Monospace
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // Core PSA safety standards
+                    val coreRules = listOf(
+                        "BSI Multiplex Sleep Rule: Wait 3 full minutes after switching off ignition before disconnecting the 12V battery to prevent EEPROM corruptions.",
+                        "Common Rail Diesel Injection: System runs at up to 1600 bar. Never crack fuel line unions while engine is cranking or running.",
+                        "Dynamic Belt Tensioner Precaution: Lock tensioner roller with 4mm pin before loosening alternator or bracket fasteners to avoid injury."
+                    )
+
+                    (coreRules + safetyNotes).distinct().forEach { rule ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.Top
+                        ) {
+                            Text(
+                                text = "⚠",
+                                color = CoralAlert,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = rule,
+                                color = TextPrimary,
+                                fontSize = 12.sp,
+                                lineHeight = 17.sp
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. Critical Fastener Torque Specifications
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Surface(
+                        color = GoldenBolt,
+                        shape = RoundedCornerShape(4.dp),
+                        modifier = Modifier.size(width = 4.dp, height = 16.dp)
+                    ) {}
+                    Text(
+                        text = "FASTENER TORQUE SPECIFICATIONS (${torqueSpecs.size})",
+                        color = GoldenBolt,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace,
+                        letterSpacing = 0.5.sp
+                    )
+                }
+            }
+        }
+
+        if (torqueSpecs.isEmpty()) {
+            item {
+                Surface(
+                    color = WorkshopSurface,
+                    shape = RoundedCornerShape(12.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, WorkshopBorder),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = "No dedicated torque overrides recorded for this procedure.",
+                            color = TextPrimary,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Refer to the PSA DV6 Standard Fastener Torque Chart below for nominal bolt ratings.",
+                            color = TextSecondary,
+                            fontSize = 11.5.sp
+                        )
+                    }
+                }
+            }
+        } else {
+            items(torqueSpecs.size, key = { torqueSpecs[it].componentName + it }) { idx ->
+                val torque = torqueSpecs[idx]
+                Surface(
+                    color = WorkshopSurface,
+                    shape = RoundedCornerShape(12.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, WorkshopBorder),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = torque.componentName,
+                                color = TextPrimary,
+                                fontSize = 13.5.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.height(3.dp))
+                            Text(
+                                text = "Fastener: ${torque.fastenerSize}",
+                                color = CyanAccent,
+                                fontSize = 11.sp,
+                                fontFamily = FontFamily.Monospace
+                            )
+                            if (torque.notes.isNotBlank()) {
+                                Spacer(modifier = Modifier.height(3.dp))
+                                Text(
+                                    text = torque.notes,
+                                    color = TextSecondary,
+                                    fontSize = 11.sp,
+                                    lineHeight = 15.sp
+                                )
+                            }
+                        }
+
+                        Surface(
+                            color = GoldenBolt.copy(alpha = 0.15f),
+                            shape = RoundedCornerShape(8.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, GoldenBolt),
+                            modifier = Modifier.clickable { onTorqueSpecClick(torque) }
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    text = "${torque.torqueNm} Nm",
+                                    color = GoldenBolt,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Black,
+                                    fontFamily = FontFamily.Monospace
+                                )
+                                Text(
+                                    text = "SPEC",
+                                    color = GoldenBolt.copy(alpha = 0.8f),
+                                    fontSize = 8.5.sp,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 3. General PSA DV6 Fastener Standard Torque Chart
+        item {
+            Surface(
+                color = WorkshopSurfaceElevated,
+                shape = RoundedCornerShape(14.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, BlueprintGrid.copy(alpha = 0.4f)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Hardware,
+                            contentDescription = null,
+                            tint = CyanAccent,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Text(
+                            text = "PSA STANDARD FASTENER TORQUE REFERENCE",
+                            color = CyanAccent,
+                            fontSize = 11.5.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace,
+                            letterSpacing = 0.5.sp
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    val standardTorques = listOf(
+                        "M6 Bolts (8.8 grade)" to "9 - 10 Nm (Heat shields, brackets, sensor mounts)",
+                        "M8 Bolts (8.8 grade)" to "22 - 25 Nm (Idler pulleys, fuel filter housing, EGR)",
+                        "M10 Bolts (8.8 grade)" to "45 - 50 Nm (Alternator pivot, engine mounting brackets)",
+                        "M12 Bolts (10.9 grade)" to "80 - 85 Nm (Subframe, caliper carriers)",
+                        "DV6 Glow Plugs (M8x1.0)" to "10 - 12 Nm (Never exceed 15 Nm; risk of shear)",
+                        "Oil Sump Drain Plug (M10)" to "25 Nm (Always fit fresh copper crush washer)"
+                    )
+
+                    standardTorques.forEach { (bolt, desc) ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = bolt,
+                                color = GoldenBolt,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = FontFamily.Monospace,
+                                modifier = Modifier.weight(0.45f)
+                            )
+                            Text(
+                                text = desc,
+                                color = TextSecondary,
+                                fontSize = 10.5.sp,
+                                modifier = Modifier.weight(0.55f)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Backward compatibility wrapper for ToolsAndBitsFilterSection.
+ */
+@Suppress("UNUSED_PARAMETER")
+@Composable
+fun ToolsAndBitsFilterSection(
+    toolsAndBits: List<ToolOrBit>,
+    activeFilter: ToolOrBit?,
+    onSelectFilter: (ToolOrBit?) -> Unit,
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
+    selectedCategory: ToolOrBitType,
+    onCategorySelect: (ToolOrBitType) -> Unit,
+    trayCheckedIds: Set<String>,
+    onToggleTrayItem: (String) -> Unit,
+    isExpanded: Boolean = true,
+    onToggleExpand: () -> Unit = {}
+) {
+    ToolsAndBitsTabContent(
+        toolsAndBits = toolsAndBits,
+        activeFilter = activeFilter,
+        onSelectFilterAndNavigate = onSelectFilter,
+        searchQuery = searchQuery,
+        onSearchQueryChange = onSearchQueryChange,
+        selectedCategory = selectedCategory,
+        onCategorySelect = onCategorySelect,
+        trayCheckedIds = trayCheckedIds,
+        onToggleTrayItem = onToggleTrayItem,
+        onMarkAllTray = {},
+        onClearTray = {}
+    )
+}
+
 @Composable
 private fun ProcedureOverviewHeader(
     procedure: RepairProcedure,
     completedCount: Int,
-    totalCount: Int
+    totalCount: Int,
+    toolsCount: Int = 0,
+    onNavigateToTools: () -> Unit = {},
+    onNavigateToSafetyTorque: () -> Unit = {}
 ) {
     Surface(
         color = WorkshopSurface,
@@ -921,6 +1503,74 @@ private fun ProcedureOverviewHeader(
                 color = if (progress == 1f) MintGreen else CitroenRed,
                 trackColor = WorkshopBorder
             )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Quick Jump Bottom-Tab Shortcuts
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = CyanAccent.copy(alpha = 0.12f),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, CyanAccent.copy(alpha = 0.4f)),
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { onNavigateToTools() }
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 7.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Handyman,
+                            contentDescription = null,
+                            tint = CyanAccent,
+                            modifier = Modifier.size(13.dp)
+                        )
+                        Spacer(modifier = Modifier.width(5.dp))
+                        Text(
+                            text = if (toolsCount > 0) "TOOLS & BITS ($toolsCount)" else "TOOLS & BITS",
+                            color = CyanAccent,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace
+                        )
+                    }
+                }
+
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = GoldenBolt.copy(alpha = 0.12f),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, GoldenBolt.copy(alpha = 0.4f)),
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { onNavigateToSafetyTorque() }
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 7.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Security,
+                            contentDescription = null,
+                            tint = GoldenBolt,
+                            modifier = Modifier.size(13.dp)
+                        )
+                        Spacer(modifier = Modifier.width(5.dp))
+                        Text(
+                            text = "SAFETY & TORQUE",
+                            color = GoldenBolt,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace
+                        )
+                    }
+                }
+            }
         }
     }
 }

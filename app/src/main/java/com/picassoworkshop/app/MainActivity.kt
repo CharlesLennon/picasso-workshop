@@ -7,13 +7,22 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.picassoworkshop.app.data.DataUpdateState
@@ -28,8 +37,7 @@ import com.picassoworkshop.app.ui.dialogs.VehicleSelectorSheet
 import com.picassoworkshop.app.ui.home.ProceduresListScreen
 import com.picassoworkshop.app.ui.obd.ObdDiagnosticsScreen
 import com.picassoworkshop.app.ui.procedure.ProcedureDetailScreen
-import com.picassoworkshop.app.ui.theme.DarkBackground
-import com.picassoworkshop.app.ui.theme.PicassoWorkshopTheme
+import com.picassoworkshop.app.ui.theme.*
 import com.picassoworkshop.app.update.AppUpdateManager
 import com.picassoworkshop.app.update.AppUpdateState
 import timber.log.Timber
@@ -142,95 +150,199 @@ fun WorkshopApp(
         dataManager.getProceduresForVehicle(currentSelection)
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        NavHost(
-            navController = navController,
-            startDestination = "home"
-        ) {
-            composable("home") {
-                ProceduresListScreen(
-                    currentSelection = currentSelection,
-                    procedures = availableProcedures,
-                    dataVersion = contentPackage.dataVersion,
-                    appVersion = updateManager.currentVersionName,
-                    dataUpdateState = dataUpdateState,
-                    appUpdateState = appUpdateState,
-                    onSwitchVehicleClick = { showVehicleSelector = true },
-                    onProcedureClick = { procedure ->
-                        navController.navigate("procedure/${procedure.id}")
-                    },
-                    onCheckDataUpdatesClick = {
-                        dataManager.checkForDataUpdates()
-                    },
-                    onCheckAppUpdatesClick = {
-                        updateManager.checkForAppUpdates()
-                    },
-                    onApplyDataUpdateClick = { downloadUrl ->
-                        dataManager.downloadAndApplyDataUpdate(downloadUrl)
-                    },
-                    onDownloadAppUpdateClick = {
-                        val release = updateManager.cachedRelease
-                        if (release != null) {
-                            updateManager.startDownload(release)
-                        }
-                    },
-                    onInstallAppUpdateClick = {
-                        val state = appUpdateState
-                        if (state is AppUpdateState.ReadyToInstall) {
-                            updateManager.installApk(state.apkFile)
-                        }
-                    },
-                    onDismissDataUpdate = {
-                        dataManager.dismissUpdateState()
-                    },
-                    onDismissAppUpdate = {
-                        updateManager.dismissUpdate()
-                    },
-                    onOpenObdClick = {
-                        navController.navigate("obd")
-                    }
-                )
-            }
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
 
-            composable("obd") {
-                ObdDiagnosticsScreen(
-                    coordinator = obdCoordinator,
-                    onBackClick = { navController.popBackStack() },
-                    onOpenProcedure = { procedureId ->
-                        navController.navigate("procedure/$procedureId")
-                    }
-                )
-            }
+    Scaffold(
+        bottomBar = {
+            // Persistent bottom navigation bar for top-level destinations
+            if (currentRoute == "home" || currentRoute == "obd") {
+                NavigationBar(
+                    containerColor = WorkshopSurfaceElevated,
+                    contentColor = TextPrimary,
+                    tonalElevation = 8.dp
+                ) {
+                    NavigationBarItem(
+                        selected = currentRoute == "home",
+                        onClick = {
+                            if (currentRoute != "home") {
+                                navController.navigate("home") {
+                                    popUpTo("home") { inclusive = true }
+                                }
+                            }
+                        },
+                        icon = {
+                            Icon(Icons.Default.Build, contentDescription = "Tutorials")
+                        },
+                        label = {
+                            Text(
+                                text = "TUTORIALS",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = FontFamily.Monospace
+                            )
+                        },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = CitroenRed,
+                            selectedTextColor = CitroenRed,
+                            indicatorColor = CitroenRed.copy(alpha = 0.15f),
+                            unselectedIconColor = TextSecondary,
+                            unselectedTextColor = TextSecondary
+                        )
+                    )
 
-            composable(
-                route = "procedure/{procedureId}",
-                arguments = listOf(navArgument("procedureId") { type = NavType.StringType })
-            ) { backStackEntry ->
-                val procedureId = backStackEntry.arguments?.getString("procedureId") ?: ""
-                val procedure = remember(procedureId, contentPackage) {
-                    dataManager.getProcedureById(procedureId)
-                }
+                    NavigationBarItem(
+                        selected = currentRoute == "obd",
+                        onClick = {
+                            if (currentRoute != "obd") {
+                                navController.navigate("obd") {
+                                    launchSingleTop = true
+                                }
+                            }
+                        },
+                        icon = {
+                            Icon(Icons.Default.Speed, contentDescription = "OBD Diagnostics")
+                        },
+                        label = {
+                            Text(
+                                text = "OBD SCAN",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = FontFamily.Monospace
+                            )
+                        },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = CyanAccent,
+                            selectedTextColor = CyanAccent,
+                            indicatorColor = CyanAccent.copy(alpha = 0.15f),
+                            unselectedIconColor = TextSecondary,
+                            unselectedTextColor = TextSecondary
+                        )
+                    )
 
-                if (procedure != null) {
-                    ProcedureDetailScreen(
-                        procedure = procedure,
-                        onBackClick = { navController.popBackStack() }
+                    NavigationBarItem(
+                        selected = showVehicleSelector,
+                        onClick = {
+                            showVehicleSelector = true
+                        },
+                        icon = {
+                            Icon(Icons.Default.DirectionsCar, contentDescription = "Vehicle Selection")
+                        },
+                        label = {
+                            Text(
+                                text = "VEHICLE",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = FontFamily.Monospace
+                            )
+                        },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = GoldenBolt,
+                            selectedTextColor = GoldenBolt,
+                            indicatorColor = GoldenBolt.copy(alpha = 0.15f),
+                            unselectedIconColor = TextSecondary,
+                            unselectedTextColor = TextSecondary
+                        )
                     )
                 }
             }
-        }
-
-        // Vehicle Selector Modal Sheet (Onboarding or Switcher)
-        if (showVehicleSelector) {
-            VehicleSelectorSheet(
-                currentSelection = currentSelection,
-                onDismiss = { showVehicleSelector = false },
-                onConfirmSelection = { newSelection ->
-                    currentSelection = newSelection
-                    onSaveVehicleSelection(newSelection)
-                    showVehicleSelector = false
+        },
+        containerColor = DarkBackground
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
+            NavHost(
+                navController = navController,
+                startDestination = "home"
+            ) {
+                composable("home") {
+                    ProceduresListScreen(
+                        currentSelection = currentSelection,
+                        procedures = availableProcedures,
+                        dataVersion = contentPackage.dataVersion,
+                        appVersion = updateManager.currentVersionName,
+                        dataUpdateState = dataUpdateState,
+                        appUpdateState = appUpdateState,
+                        onSwitchVehicleClick = { showVehicleSelector = true },
+                        onProcedureClick = { procedure ->
+                            navController.navigate("procedure/${procedure.id}")
+                        },
+                        onCheckDataUpdatesClick = {
+                            dataManager.checkForDataUpdates()
+                        },
+                        onCheckAppUpdatesClick = {
+                            updateManager.checkForAppUpdates()
+                        },
+                        onApplyDataUpdateClick = { downloadUrl ->
+                            dataManager.downloadAndApplyDataUpdate(downloadUrl)
+                        },
+                        onDownloadAppUpdateClick = {
+                            val release = updateManager.cachedRelease
+                            if (release != null) {
+                                updateManager.startDownload(release)
+                            }
+                        },
+                        onInstallAppUpdateClick = {
+                            val state = appUpdateState
+                            if (state is AppUpdateState.ReadyToInstall) {
+                                updateManager.installApk(state.apkFile)
+                            }
+                        },
+                        onDismissDataUpdate = {
+                            dataManager.dismissUpdateState()
+                        },
+                        onDismissAppUpdate = {
+                            updateManager.dismissUpdate()
+                        },
+                        onOpenObdClick = {
+                            navController.navigate("obd")
+                        }
+                    )
                 }
-            )
+
+                composable("obd") {
+                    ObdDiagnosticsScreen(
+                        coordinator = obdCoordinator,
+                        onBackClick = { navController.popBackStack() },
+                        onOpenProcedure = { procedureId ->
+                            navController.navigate("procedure/$procedureId")
+                        }
+                    )
+                }
+
+                composable(
+                    route = "procedure/{procedureId}",
+                    arguments = listOf(navArgument("procedureId") { type = NavType.StringType })
+                ) { backStackEntry ->
+                    val procedureId = backStackEntry.arguments?.getString("procedureId") ?: ""
+                    val procedure = remember(procedureId, contentPackage) {
+                        dataManager.getProcedureById(procedureId)
+                    }
+
+                    if (procedure != null) {
+                        ProcedureDetailScreen(
+                            procedure = procedure,
+                            onBackClick = { navController.popBackStack() }
+                        )
+                    }
+                }
+            }
+
+            // Vehicle Selector Modal Sheet (Onboarding or Switcher)
+            if (showVehicleSelector) {
+                VehicleSelectorSheet(
+                    currentSelection = currentSelection,
+                    onDismiss = { showVehicleSelector = false },
+                    onConfirmSelection = { newSelection ->
+                        currentSelection = newSelection
+                        onSaveVehicleSelection(newSelection)
+                        showVehicleSelector = false
+                    }
+                )
+            }
         }
     }
 }
